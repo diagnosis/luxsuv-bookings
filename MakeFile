@@ -1,0 +1,19 @@
+.PHONY: run db/up db/down db/psql migrate/up migrate/down
+
+run:
+	. ./.env && go run ./cmd/api
+
+db/up:
+	docker compose up -d db
+
+db/down:
+	docker compose down
+
+db/psql:
+	docker exec -it luxsuv_db psql -U postgres -d luxsuv
+
+migrate/up:
+	. ./.env && goose -dir ./migrations postgres "$$DATABASE_URL" up
+
+migrate/down:
+	. ./.env && goose -dir ./migrations postgres "$$DATABASE_URL" down

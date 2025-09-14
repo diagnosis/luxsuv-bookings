@@ -1,0 +1,20 @@
+version: "3.9"
+services:
+  db:
+    image: postgres:17
+    container_name: luxsuv_db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: luxsuv-co
+    ports: ["5432:5432"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d luxsuv"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+    volumes:
+      - db_data:/var/lib/postgresql/data
+volumes:
+  db_data:
