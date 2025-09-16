@@ -56,11 +56,19 @@ func main() {
 
 	//repo and handlers
 	bookRepo := postgres.NewBookingRepo(pool)
+	idempotencyRepo := postgres.NewIdempotencyRepo(pool)
 	userRepo := postgres.NewUsersRepo(pool)
 	verifyRepo := postgres.NewVerifyRepo(pool)
 	//
-	guestBookings := guest.NewBookingsHandler(bookRepo)
+	guestBookings := guest.NewBookingsHandler(bookRepo, idempotencyRepo)
 	guestAccess := guest.NewAccessHandler(verifyRepo, emailSvc)
+
+	// Rate limiting for guest access requests
+	accessRateLimit := mw.NewRateLimiter(pool, mw.RateLimitConfig{
+		Requests: 5,                           // 5 requests per window
+		Window:   time.Minute,                 // 1 minute window
+		KeyFunc:  mw.GuestAccessRateLimitKeyFunc,
+	})
 
 	authH := handlers.NewAuthHandler(userRepo, verifyRepo, emailSvc)
 	riderH := handlers.NewRiderBookingsHandler(bookRepo, userRepo)
@@ -90,7 +98,12 @@ func main() {
 	})
 	//
 	r.Mount("/v1/guest/bookings", guestBookings.Routes())
-	r.Mount("/v1/guest/access", guestAccess.Routes())
+
+	// Mount guest access with rate limiting
+	r.Group(func(gr chi.Router) {
+		gr.Use(accessRateLimit.Middleware())
+		gr.Mount("/v1/guest/access", guestAccess.Routes())
+	})
 
 	r.Mount("/v1/auth", authH.Routes())
 	r.Group(func(gr chi.Router) {
