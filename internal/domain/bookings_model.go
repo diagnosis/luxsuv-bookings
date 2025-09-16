@@ -47,6 +47,7 @@ type Booking struct {
 	Luggages   int      `json:"luggages"`
 	RideType   RideType `json:"ride_type"`
 
+	UserID    *int64    `json:"user_id,omitempty"` // ← add this
 	DriverID  *int64    `json:"driver_id,omitempty"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
@@ -87,4 +88,17 @@ type BookingDTO struct {
 	DriverID    *int64    `json:"driver_id,omitempty"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
+	UserID      *int64    `json:"user_id,omitempty"`
+}
+
+type GuestPatch struct {
+	RiderName   *string    `json:"rider_name,omitempty"`
+	RiderPhone  *string    `json:"rider_phone,omitempty"`
+	Pickup      *string    `json:"pickup,omitempty"`
+	Dropoff     *string    `json:"dropoff,omitempty"`
+	ScheduledAt *time.Time `json:"scheduled_at,omitempty"`
+	Notes       *string    `json:"notes,omitempty"`
+	Passengers  *int       `json:"passengers,omitempty"`
+	Luggages    *int       `json:"luggages,omitempty"`
+	RideType    *RideType  `json:"ride_type,omitempty"`
 }

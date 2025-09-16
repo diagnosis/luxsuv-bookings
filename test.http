@@ -1,0 +1,120 @@
+### ───────────────────────────────────────────────────────────────────────────
+### Variables (tweak these as you like)
+### ───────────────────────────────────────────────────────────────────────────
+@host    = http://localhost:8080
+@email   = guest1@example.com
+@phone   = +15551234567
+@future  = 2025-10-01T15:00:00Z
+@notes   = 2 bags
+@code    = 364000
+
+### ───────────────────────────────────────────────────────────────────────────
+### 1) Create guest booking  -> returns { id, manage_token, status, scheduled_at }
+### ───────────────────────────────────────────────────────────────────────────
+POST {{host}}/v1/guest/bookings
+Content-Type: application/json
+
+{
+  "rider_name": "Guest One",
+  "rider_email": "{{email}}",
+  "rider_phone": "{{phone}}",
+  "pickup": "SFO",
+  "dropoff": "Downtown",
+  "scheduled_at": "{{future}}",
+  "notes": "{{notes}}",
+  "passengers": 2,
+  "luggages": 2,
+  "ride_type": "per_ride"
+}
+
+> {%
+    // Capture booking_id and manage_token for later steps
+    const body = JSON.parse(response.body);
+    client.global.set("booking_id", String(body.id));
+    client.global.set("manage_token", body.manage_token);
+%}
+
+### ───────────────────────────────────────────────────────────────────────────
+### 2) Request access code (email will contain a 6-digit code + magic link)
+### ───────────────────────────────────────────────────────────────────────────
+POST {{host}}/v1/guest/access/request
+Content-Type: application/json
+
+{
+  "email": "{{email}}"
+}
+
+### ───────────────────────────────────────────────────────────────────────────
+### 3) Verify code -> returns { session_token, expires_in }
+###     Paste the 6-digit code from your email into @code above.
+### ───────────────────────────────────────────────────────────────────────────
+POST {{host}}/v1/guest/access/verify
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "code": "{{code}}"
+}
+
+> {%
+    // Capture session_token for authenticated guest requests
+    const body = JSON.parse(response.body);
+    client.global.set("session_token", body.session_token);
+%}
+
+### ───────────────────────────────────────────────────────────────────────────
+### 4) List my bookings (guest session)
+### ───────────────────────────────────────────────────────────────────────────
+GET {{host}}/v1/guest/bookings?limit=10&offset=0
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjAsImVtYWlsIjoiZ3Vlc3QxQGV4YW1wbGUuY29tIiwicm9sZSI6Imd1ZXN0Iiwic2NvcGUiOiJndWVzdC5ib29raW5nczpyZWFkIGd1ZXN0LmJvb2tpbmdzOndyaXRlIiwiYXVkIjpbImx1eHN1di1hcGkiXSwiZXhwIjoxNzU4MDMzNDE5LCJuYmYiOjE3NTgwMzE2MTksImlhdCI6MTc1ODAzMTYxOX0.a0_gGr5nMNS8HlooULqfDWXIoCw2ka20e8dp30G6sa8
+
+### ───────────────────────────────────────────────────────────────────────────
+### 5) Get a booking by manage_token (no session required)
+### ───────────────────────────────────────────────────────────────────────────
+GET {{host}}/v1/guest/bookings/14?manage_token=4d5c3681-4f1d-479f-990d-e9b6707cdeb6
+
+### ───────────────────────────────────────────────────────────────────────────
+### 6) Patch booking via manage_token (guest can edit notes, pickup, dropoff,
+###    passengers, luggages, ride_type, scheduled_at)
+### ───────────────────────────────────────────────────────────────────────────
+PATCH {{host}}/v1/guest/bookings/14?manage_token=4d5c3681-4f1d-479f-990d-e9b6707cdeb6
+Content-Type: application/json
+
+{
+  "notes": "updated notes by http client",
+  "passengers": 3,
+  "luggages": 1,
+  "pickup": "SFO Terminal 2",
+  "dropoff": "Embarcadero",
+  "ride_type": "per_ride",
+  "scheduled_at": "2025-10-01T16:00:00Z"
+}
+
+### ───────────────────────────────────────────────────────────────────────────
+### 7) Cancel booking via manage_token (no session required)
+### ───────────────────────────────────────────────────────────────────────────
+DELETE {{host}}/v1/guest/bookings/14?manage_token=4d5c3681-4f1d-479f-990d-e9b6707cdeb6
+
+### ───────────────────────────────────────────────────────────────────────────
+### 8) NEGATIVE: list without token -> 401
+### ───────────────────────────────────────────────────────────────────────────
+GET {{host}}/v1/guest/bookings?limit=5&offset=0
+
+### ───────────────────────────────────────────────────────────────────────────
+### 9) NEGATIVE: create booking in the past -> 400
+### ───────────────────────────────────────────────────────────────────────────
+POST {{host}}/v1/guest/bookings
+Content-Type: application/json
+
+{
+  "rider_name": "Past Person",
+  "rider_email": "{{email}}",
+  "rider_phone": "{{phone}}",
+  "pickup": "Napa",
+  "dropoff": "SFO",
+  "scheduled_at": "2020-01-01T00:00:00Z",
+  "notes": "time travel",
+  "passengers": 1,
+  "luggages": 0,
+  "ride_type": "per_ride"
+}
