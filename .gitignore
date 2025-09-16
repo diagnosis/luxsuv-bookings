@@ -80,3 +80,4 @@ docker-compose.override.yml
 # Migrations compiled cache (goose/sqlc if generated)
 sqlc-gen/
 migrations/*.tmp
+.env
