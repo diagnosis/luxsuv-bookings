@@ -778,29 +778,119 @@ Built with ❤️ by the LuxSuv development team.
 
 ---
 
-# 🌟 Frontend Implementation Guide
+# 🌟 Multi-App Frontend Architecture
 
-This section provides a comprehensive guide for implementing the React frontend for the LuxSuv booking platform.
+This section provides a comprehensive guide for implementing multiple React frontends for the LuxSuv booking platform, each optimized for specific user roles and use cases.
 
-## 🎯 Frontend Overview
+## 🏢 Frontend Applications Overview
 
-The frontend is a modern React application that interfaces with the microservices backend through the API Gateway. It supports both guest (passwordless) bookings and authenticated user accounts.
+The LuxSuv platform consists of three separate React applications, each tailored for different user types:
 
-### Key Features
-- **Passwordless Guest Flow**: Create bookings without registration
-- **User Authentication**: Traditional login/register with email verification
-- **Real-time Updates**: Optimistic UI updates with server synchronization
-- **Responsive Design**: Mobile-first approach with desktop optimization
-- **Type Safety**: Full TypeScript coverage from API to components
-- **Accessibility**: WCAG 2.1 compliant interface
-- **PWA Ready**: Service worker support for offline functionality
+### 🚗 Rider App (Customer-Facing)
+**Purpose**: Customer booking interface for riders
+**Users**: Guests, Registered Riders
+**Deployment**: Web app (mobile-responsive)
+**Future**: Mobile app (React Native)
 
-## 🏗️ Frontend Architecture
+**Key Features:**
+- **Passwordless Guest Booking**: No-friction booking experience
+- **User Registration/Login**: Account management with booking history
+- **Real-time Booking Updates**: Live status updates and notifications
+- **Mobile-Optimized**: Touch-friendly interface, mobile-first design
+- **Booking Management**: View, edit, cancel bookings
+- **Payment Integration**: Stripe payment processing
 
-### Tech Stack
+### 🏢 Admin/Dispatcher Portal (Operations)
+**Purpose**: Operations management for admin staff and dispatchers
+**Users**: Admins, Dispatchers
+**Deployment**: Web app (desktop-optimized)
+
+**Key Features:**
+- **Booking Management**: View all bookings, advanced filtering
+- **Driver Assignment**: Manual and automatic assignment tools
+- **Real-time Dashboard**: Live operations overview
+- **User Management**: Manage riders, drivers, and staff
+- **Analytics & Reporting**: Business intelligence and insights
+- **System Configuration**: Platform settings and configuration
+
+### 📱 Driver App (Driver-Facing)
+**Purpose**: Driver interface for managing assignments and trips
+**Users**: Drivers
+**Deployment**: PWA (progressive web app)
+**Future**: Native mobile app (React Native)
+
+**Key Features:**
+- **Assignment Management**: Accept/decline ride assignments
+- **Trip Navigation**: GPS integration and route optimization
+- **Availability Toggle**: Online/offline status management
+- **Earnings Tracking**: Trip history and payment information
+- **Real-time Communication**: Chat with dispatch and riders
+- **Mobile-First**: Optimized for mobile use in vehicles
+
+## 🏗️ Monorepo Architecture
+
+### Project Structure
+```
+frontend/
+├── apps/                          # Individual applications
+│   ├── rider/                     # Rider customer app
+│   │   ├── src/
+│   │   ├── public/
+│   │   ├── package.json
+│   │   ├── vite.config.ts
+│   │   └── tailwind.config.js
+│   ├── admin/                     # Admin/dispatcher portal
+│   │   ├── src/
+│   │   ├── public/
+│   │   ├── package.json
+│   │   ├── vite.config.ts
+│   │   └── tailwind.config.js
+│   └── driver/                    # Driver mobile app
+│       ├── src/
+│       ├── public/
+│       ├── package.json
+│       ├── vite.config.ts
+│       └── tailwind.config.js
+├── packages/                      # Shared packages
+│   ├── ui/                        # Shared UI components
+│   │   ├── src/
+│   │   │   ├── components/        # Base design system
+│   │   │   ├── hooks/            # UI hooks
+│   │   │   └── styles/           # Shared styles
+│   │   ├── package.json
+│   │   └── tsconfig.json
+│   ├── api/                       # Shared API client
+│   │   ├── src/
+│   │   │   ├── client.ts         # Base API client
+│   │   │   ├── auth.ts           # Auth endpoints
+│   │   │   ├── bookings.ts       # Booking endpoints
+│   │   │   ├── admin.ts          # Admin endpoints
+│   │   │   ├── driver.ts         # Driver endpoints
+│   │   │   └── types/            # Shared types
+│   │   ├── package.json
+│   │   └── tsconfig.json
+│   ├── utils/                     # Shared utilities
+│   │   ├── src/
+│   │   │   ├── validations/      # Zod schemas
+│   │   │   ├── formatting/       # Date, currency, etc.
+│   │   │   ├── constants/        # App constants
+│   │   │   └── helpers/          # Utility functions
+│   │   ├── package.json
+│   │   └── tsconfig.json
+│   └── config/                    # Shared configuration
+│       ├── eslint-config/        # ESLint configs
+│       ├── tailwind-config/      # Tailwind configs
+│       └── typescript-config/    # TypeScript configs
+├── package.json                   # Root package.json (workspace)
+├── pnpm-workspace.yaml           # pnpm workspace config
+├── turbo.json                    # Turborepo config
+└── README.md                     # This guide
+```
+
+### Shared Tech Stack
 ```json
 {
-  "framework": "React 18 with TypeScript",
+  "framework": "React 19 with TypeScript",
   "build_tool": "Vite for fast development",
   "routing": "TanStack Router (file-based)",
   "state_management": {
@@ -808,6 +898,7 @@ The frontend is a modern React application that interfaces with the microservice
     "client_state": "Zustand stores",
     "form_state": "React Hook Form + Zod"
   },
+  "monorepo": "pnpm workspaces + Turborepo",
   "styling": {
     "framework": "Tailwind CSS",
     "components": "Headless UI + Custom Design System",
@@ -822,250 +913,1117 @@ The frontend is a modern React application that interfaces with the microservice
 }
 ```
 
-### Project Structure
+## 🚀 Quick Start (Monorepo Setup)
+
+### 1. Initialize Monorepo
+```bash
+# Create frontend directory
+mkdir frontend && cd frontend
+
+# Initialize root package.json
+npm init -y
+
+# Install pnpm globally (if not installed)
+npm install -g pnpm
+
+# Create workspace configuration
+echo 'packages:
+  - "apps/*"
+  - "packages/*"' > pnpm-workspace.yaml
 ```
-frontend/
+
+### 2. Install Global Dependencies
+```bash
+# Install Turborepo for monorepo management
+pnpm add -D turbo
+
+# Install shared dev dependencies
+pnpm add -D typescript @types/node
+pnpm add -D eslint prettier
+pnpm add -D @typescript-eslint/eslint-plugin
+pnpm add -D @typescript-eslint/parser
+```
+
+### 3. Create Apps
+```bash
+# Create rider app
+mkdir -p apps/rider && cd apps/rider
+pnpm create vite . --template react-ts
+cd ../..
+
+# Create admin portal
+mkdir -p apps/admin && cd apps/admin  
+pnpm create vite . --template react-ts
+cd ../..
+
+# Create driver app
+mkdir -p apps/driver && cd apps/driver
+pnpm create vite . --template react-ts
+cd ../..
+```
+
+### 4. Setup Shared Packages
+```bash
+# Create shared UI package
+mkdir -p packages/ui/src
+cd packages/ui
+pnpm init
+# Add dependencies for UI package
+pnpm add react react-dom @types/react @types/react-dom
+pnpm add tailwindcss @headlessui/react lucide-react clsx
+cd ../..
+
+# Create shared API package
+mkdir -p packages/api/src
+cd packages/api
+pnpm init
+# Add dependencies for API package
+pnpm add @tanstack/react-query zod
+cd ../..
+
+# Create shared utils package
+mkdir -p packages/utils/src  
+cd packages/utils
+pnpm init
+pnpm add date-fns zod
+cd ../..
+```
+
+### 5. Configure Turborepo
+```json
+// turbo.json
+{
+  "pipeline": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**"]
+    },
+    "dev": {
+      "cache": false
+    },
+    "lint": {},
+    "test": {
+      "dependsOn": ["^build"]
+    },
+    "type-check": {
+      "dependsOn": ["^build"]
+    }
+  }
+}
+```
+
+### 6. Root Package.json Scripts
+```json
+{
+  "name": "luxsuv-frontend",
+  "private": true,
+  "scripts": {
+    "dev": "turbo run dev --parallel",
+    "dev:rider": "turbo run dev --filter=rider",
+    "dev:admin": "turbo run dev --filter=admin",
+    "dev:driver": "turbo run dev --filter=driver",
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "lint": "turbo run lint",
+    "type-check": "turbo run type-check",
+    "clean": "turbo run clean && rm -rf node_modules"
+  },
+  "devDependencies": {
+    "turbo": "^1.13.0"
+  }
+}
+```
+
+## 🚗 Rider App Implementation
+
+### App-Specific Structure
+```
+apps/rider/
 ├── public/                     # Static assets
-│   ├── icons/                 # App icons and favicons
-│   └── images/               # Static images
+│   ├── icons/                 # Rider app icons
+│   ├── images/               # Rider-specific images
+│   └── manifest.json         # PWA manifest
 ├── src/
-│   ├── components/            # Reusable UI components
-│   │   ├── ui/               # Base design system components
-│   │   │   ├── Button.tsx
-│   │   │   ├── Input.tsx
-│   │   │   ├── Modal.tsx
-│   │   │   └── Toast.tsx
+│   ├── components/            # Rider-specific components
 │   │   ├── forms/            # Form-specific components
 │   │   │   ├── BookingForm.tsx
-│   │   │   ├── LoginForm.tsx
-│   │   │   └── RegisterForm.tsx
+│   │   │   ├── GuestAccessForm.tsx
+│   │   │   └── ProfileForm.tsx
 │   │   ├── layouts/          # Layout components
-│   │   │   ├── AppLayout.tsx
-│   │   │   ├── AuthLayout.tsx
-│   │   │   └── GuestLayout.tsx
-│   │   └── features/         # Feature-specific components
-│   │       ├── booking/      # Booking-related components
-│   │       ├── auth/         # Authentication components
-│   │       └── dashboard/    # Dashboard components
+│   │   │   ├── RiderLayout.tsx
+│   │   │   ├── GuestLayout.tsx
+│   │   │   └── MobileLayout.tsx
+│   │   └── features/         # Rider-specific features
+│   │       ├── booking/      # Booking flow
+│   │       │   ├── BookingCard.tsx
+│   │       │   ├── BookingHistory.tsx
+│   │       │   └── BookingStatus.tsx
+│   │       ├── guest/        # Guest flow
+│   │       │   ├── GuestAccess.tsx
+│   │       │   └── GuestBookings.tsx
+│   │       └── profile/      # User profile
+│   │           ├── ProfileSettings.tsx
+│   │           └── PaymentMethods.tsx
 │   ├── hooks/                # Custom React hooks
-│   │   ├── api/              # API-specific hooks
-│   │   │   ├── useAuth.ts
+│   │   ├── api/              # Rider API hooks
+│   │   │   ├── useRiderAuth.ts
 │   │   │   ├── useBookings.ts
 │   │   │   └── useGuestAccess.ts
-│   │   ├── ui/               # UI-specific hooks
-│   │   │   ├── useToast.ts
-│   │   │   └── useLocalStorage.ts
-│   │   └── business/         # Business logic hooks
+│   │   └── business/         # Rider business logic
 │   │       ├── useBookingValidation.ts
-│   │       └── useGuestSession.ts
-│   ├── lib/                  # Utilities and configurations
-│   │   ├── api/              # API client setup
-│   │   │   ├── client.ts     # Base API client
-│   │   │   ├── auth.ts       # Auth API methods
-│   │   │   ├── bookings.ts   # Bookings API methods
-│   │   │   └── types.ts      # API response types
-│   │   ├── auth/             # Authentication utilities
-│   │   │   ├── session.ts    # Session management
-│   │   │   ├── storage.ts    # Token storage
-│   │   │   └── guards.ts     # Route guards
-│   │   ├── validations/      # Zod schemas
-│   │   │   ├── auth.ts       # Auth validation schemas
-│   │   │   ├── booking.ts    # Booking validation schemas
-│   │   │   └── common.ts     # Shared validation utilities
-│   │   ├── utils.ts          # General utilities
-│   │   └── constants.ts      # App constants
-│   ├── routes/               # Route components (file-based routing)
+│   │       ├── useGuestSession.ts
+│   │       └── usePayment.ts
+│   ├── routes/               # Rider routes
 │   │   ├── __root.tsx        # Root layout and providers
-│   │   ├── index.tsx         # Landing page
-│   │   ├── auth/             # Authentication routes
+│   │   ├── index.tsx         # Rider landing page
+│   │   ├── book.tsx          # Quick booking flow
+│   │   ├── guest/            # Guest booking routes
+│   │   │   ├── access.tsx
+│   │   │   └── bookings/
+│   │   ├── auth/             # Authentication
 │   │   │   ├── login.tsx
 │   │   │   ├── register.tsx
-│   │   │   └── verify-email.tsx
-│   │   ├── guest/            # Guest booking routes
-│   │   │   ├── access.tsx    # Guest access flow
-│   │   │   ├── bookings/     # Guest booking management
-│   │   │   │   ├── index.tsx # List bookings
-│   │   │   │   ├── create.tsx# Create booking
-│   │   │   │   └── $id.tsx   # View/edit booking
-│   │   │   └── booking.tsx   # Single booking with manage token
+│   │   │   └── verify.tsx
 │   │   ├── dashboard/        # User dashboard
-│   │   │   ├── index.tsx     # Dashboard overview
-│   │   │   ├── bookings/     # User bookings management
-│   │   │   └── profile.tsx   # User profile
-│   │   └── admin/            # Admin panel
-│   │       ├── index.tsx     # Admin dashboard
-│   │       ├── bookings.tsx  # Booking management
-│   │       └── users.tsx     # User management
+│   │   │   ├── index.tsx
+│   │   │   ├── bookings/
+│   │   │   └── profile.tsx
+│   │   └── booking/          # Booking management
+│   │       ├── $id.tsx       # Booking details
+│   │       └── history.tsx   # Booking history
 │   ├── stores/               # Zustand stores for client state
-│   │   ├── auth.ts           # Authentication state
-│   │   ├── ui.ts             # UI preferences and state
+│   │   ├── auth.ts           # Rider authentication
+│   │   ├── booking.ts        # Booking state
+│   │   └── ui.ts             # UI preferences
+│   ├── styles/               # Rider-specific styles
+│   │   ├── globals.css
+│   │   └── mobile.css        # Mobile-specific styles
+│   └── main.tsx              # Rider app entry point
+└── package.json
+```
+
+### Rider App Configuration
+```json
+// apps/rider/package.json
+{
+  "name": "luxsuv-rider",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 3001",
+    "build": "tsc && vite build",
+    "preview": "vite preview --port 3001"
+  },
+  "dependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "@tanstack/react-router": "^1.58.0",
+    "@tanstack/react-query": "^5.56.0",
+    "zustand": "^4.5.0",
+    "react-hook-form": "^7.53.0",
+    "@hookform/resolvers": "^3.9.0",
+    "zod": "^3.23.0",
+    "tailwindcss": "^3.4.0",
+    "@headlessui/react": "^2.1.0",
+    "lucide-react": "^0.446.0",
+    "sonner": "^1.5.0",
+    "date-fns": "^4.1.0",
+    "@luxsuv/ui": "workspace:*",
+    "@luxsuv/api": "workspace:*",
+    "@luxsuv/utils": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.0",
+    "typescript": "^5.5.0",
+    "vite": "^5.4.0",
+    "vitest": "^2.1.0"
+  }
+}
+```
+
+## 🏢 Admin/Dispatcher Portal Implementation
+
+### Admin App Structure
+```
+apps/admin/
+├── src/
+│   ├── components/
+│   │   ├── dashboard/        # Dashboard components
+│   │   │   ├── MetricsCard.tsx
+│   │   │   ├── BookingChart.tsx
+│   │   │   └── RealtimeMap.tsx
+│   │   ├── tables/           # Data tables
+│   │   │   ├── BookingsTable.tsx
+│   │   │   ├── DriversTable.tsx
+│   │   │   └── UsersTable.tsx
+│   │   ├── forms/            # Admin forms
+│   │   │   ├── AssignDriverForm.tsx
+│   │   │   ├── UserManagementForm.tsx
+│   │   │   └── SystemConfigForm.tsx
+│   │   └── layouts/
+│   │       ├── AdminLayout.tsx
+│   │       ├── Sidebar.tsx
+│   │       └── Header.tsx
+│   ├── hooks/
+│   │   ├── api/              # Admin API hooks
+│   │   │   ├── useAdminAuth.ts
+│   │   │   ├── useBookingManagement.ts
+│   │   │   ├── useDriverManagement.ts
+│   │   │   ├── useUserManagement.ts
+│   │   │   └── useAnalytics.ts
+│   │   └── business/         # Admin business logic
+│   │       ├── useDispatch.ts
+│   │       ├── useAssignment.ts
+│   │       └── useReporting.ts
+│   ├── routes/
+│   │   ├── __root.tsx
+│   │   ├── index.tsx         # Admin dashboard
+│   │   ├── login.tsx         # Admin login
+│   │   ├── bookings/         # Booking management
+│   │   │   ├── index.tsx     # All bookings
+│   │   │   ├── $id.tsx       # Booking details
+│   │   │   └── assign.tsx    # Driver assignment
+│   │   ├── drivers/          # Driver management
+│   │   │   ├── index.tsx     # All drivers
+│   │   │   ├── $id.tsx       # Driver details
+│   │   │   └── availability.tsx
+│   │   ├── users/            # User management
+│   │   │   ├── index.tsx
+│   │   │   └── $id.tsx
+│   │   ├── dispatch/         # Dispatch tools
+│   │   │   ├── live.tsx      # Live dispatch view
+│   │   │   ├── pending.tsx   # Pending assignments
+│   │   │   └── history.tsx   # Assignment history
+│   │   └── analytics/        # Business intelligence
+│   │       ├── overview.tsx
+│   │       ├── performance.tsx
+│   │       └── reports.tsx
+│   ├── stores/
+│   │   ├── auth.ts           # Admin authentication
+│   │   ├── dispatch.ts       # Dispatch state
 │   │   └── booking.ts        # Booking form state
-│   ├── styles/               # Styling files
-│   │   ├── globals.css       # Global styles and Tailwind imports
-│   │   └── components.css    # Component-specific styles
-│   ├── types/                # TypeScript type definitions
-│   │   ├── api.ts            # API response types
-│   │   ├── auth.ts           # Authentication types
-│   │   ├── booking.ts        # Booking types
-│   │   └── common.ts         # Shared types
-│   └── main.tsx              # App entry point
-├── package.json              # Dependencies and scripts
-├── vite.config.ts            # Vite configuration
-├── tailwind.config.js        # Tailwind configuration
-├── tsconfig.json             # TypeScript configuration
-└── .env.example              # Environment variables template
+│   └── main.tsx
+└── package.json
 ```
 
-## 🚀 Quick Start
+### Admin Dashboard Component
+```tsx
+// apps/admin/src/routes/index.tsx
+import { createFileRoute } from '@tanstack/react-router'
+import { BarChart, Users, Car, Clock, TrendingUp, AlertCircle } from 'lucide-react'
+import { MetricsCard } from '../components/dashboard/MetricsCard'
+import { BookingChart } from '../components/dashboard/BookingChart'
+import { RecentBookings } from '../components/dashboard/RecentBookings'
+import { DriverStatus } from '../components/dashboard/DriverStatus'
+import { useAdminDashboard } from '../hooks/api/useAdminDashboard'
 
-### Prerequisites
-- Node.js 18+ 
-- npm or yarn
-- Backend services running (see main setup guide)
+export const Route = createFileRoute('/')({
+  component: AdminDashboard,
+  beforeLoad: ({ context }) => {
+    // Check admin authentication
+    if (!context.auth.isAuthenticated || context.auth.user?.role !== 'admin') {
+      throw redirect({ to: '/login' })
+    }
+  },
+})
 
-### Setup
+function AdminDashboard() {
+  const { metrics, bookingStats, driverStats, isLoading } = useAdminDashboard()
 
-1. **Create React Project with Vite:**
-```bash
-npm create vite@latest frontend -- --template react-ts
-cd frontend
-npm install
+  if (isLoading) {
+    return <DashboardSkeleton />
+  }
+
+  return (
+    <div className="space-y-8">
+      {/* Header */}
+      <div>
+        <h1 className="text-3xl font-bold text-gray-900">Operations Dashboard</h1>
+        <p className="text-gray-600">Real-time overview of LuxSuv operations</p>
+      </div>
+
+      {/* Metrics Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <MetricsCard
+          title="Active Bookings"
+          value={metrics.activeBookings}
+          change={metrics.activeBookingsChange}
+          icon={<Clock className="w-6 h-6" />}
+          color="blue"
+        />
+        <MetricsCard
+          title="Available Drivers"
+          value={metrics.availableDrivers}
+          change={metrics.availableDriversChange}
+          icon={<Car className="w-6 h-6" />}
+          color="green"
+        />
+        <MetricsCard
+          title="Total Revenue"
+          value={`$${metrics.totalRevenue.toLocaleString()}`}
+          change={metrics.revenueChange}
+          icon={<TrendingUp className="w-6 h-6" />}
+          color="indigo"
+        />
+        <MetricsCard
+          title="Issues"
+          value={metrics.issues}
+          change={metrics.issuesChange}
+          icon={<AlertCircle className="w-6 h-6" />}
+          color="red"
+        />
+      </div>
+
+      {/* Charts and Lists */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="bg-white p-6 rounded-xl shadow-sm border">
+          <h3 className="text-lg font-semibold mb-4">Booking Trends</h3>
+          <BookingChart data={bookingStats} />
+        </div>
+        
+        <div className="bg-white p-6 rounded-xl shadow-sm border">
+          <h3 className="text-lg font-semibold mb-4">Driver Status</h3>
+          <DriverStatus data={driverStats} />
+        </div>
+      </div>
+
+      {/* Recent Activity */}
+      <div className="bg-white rounded-xl shadow-sm border">
+        <div className="p-6 border-b">
+          <h3 className="text-lg font-semibold">Recent Bookings</h3>
+        </div>
+        <RecentBookings />
+      </div>
+    </div>
+  )
+}
 ```
 
-2. **Install Core Dependencies:**
-```bash
-# Routing and Navigation
-npm install @tanstack/react-router @tanstack/router-vite-plugin
+### Dispatch Assignment Component
+```tsx
+// apps/admin/src/components/dispatch/AssignmentPanel.tsx
+import React, { useState } from 'react'
+import { MapPin, User, Clock, CheckCircle, X } from 'lucide-react'
+import { Button } from '@luxsuv/ui'
+import { useDispatch } from '../../hooks/api/useDispatch'
+import type { Booking, Driver } from '@luxsuv/api/types'
 
-# State Management
-npm install @tanstack/react-query zustand
+interface AssignmentPanelProps {
+  booking: Booking
+  availableDrivers: Driver[]
+  onAssign: (bookingId: number, driverId: number) => void
+  onClose: () => void
+}
 
-# Forms and Validation  
-npm install react-hook-form @hookform/resolvers zod
+export const AssignmentPanel: React.FC<AssignmentPanelProps> = ({
+  booking,
+  availableDrivers,
+  onAssign,
+  onClose,
+}) => {
+  const [selectedDriver, setSelectedDriver] = useState<number | null>(null)
+  const { assignBooking, isAssigning } = useDispatch()
 
-# UI and Styling
-npm install tailwindcss @headlessui/react @tailwindcss/forms
-npm install lucide-react clsx tailwind-merge
+  const handleAssign = () => {
+    if (selectedDriver) {
+      assignBooking({
+        bookingId: booking.id,
+        driverId: selectedDriver,
+      }, {
+        onSuccess: () => {
+          onAssign(booking.id, selectedDriver)
+          onClose()
+        },
+      })
+    }
+  }
 
-# Date handling
-npm install date-fns
+  return (
+    <div className="bg-white rounded-xl shadow-lg border p-6 max-w-2xl">
+      {/* Booking Info */}
+      <div className="flex justify-between items-start mb-6">
+        <div>
+          <h3 className="text-lg font-semibold">Assign Driver</h3>
+          <p className="text-sm text-gray-600">Booking #{booking.id}</p>
+        </div>
+        <Button variant="ghost" size="sm" onClick={onClose}>
+          <X className="w-4 h-4" />
+        </Button>
+      </div>
 
-# Notifications
-npm install sonner
+      {/* Trip Details */}
+      <div className="bg-gray-50 rounded-lg p-4 mb-6">
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <MapPin className="w-4 h-4 text-green-600" />
+            <span className="text-sm font-medium">Pickup:</span>
+            <span className="text-sm text-gray-700">{booking.pickup}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <MapPin className="w-4 h-4 text-red-600" />
+            <span className="text-sm font-medium">Dropoff:</span>
+            <span className="text-sm text-gray-700">{booking.dropoff}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Clock className="w-4 h-4 text-blue-600" />
+            <span className="text-sm font-medium">Scheduled:</span>
+            <span className="text-sm text-gray-700">
+              {format(new Date(booking.scheduled_at), 'MMM d, h:mm a')}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <User className="w-4 h-4 text-purple-600" />
+            <span className="text-sm font-medium">Passenger:</span>
+            <span className="text-sm text-gray-700">{booking.rider_name}</span>
+          </div>
+        </div>
+      </div>
 
-# HTTP Client (if needed beyond fetch)
-npm install axios
+      {/* Available Drivers */}
+      <div className="mb-6">
+        <h4 className="text-md font-medium mb-3">Available Drivers ({availableDrivers.length})</h4>
+        <div className="space-y-2 max-h-64 overflow-y-auto">
+          {availableDrivers.map((driver) => (
+            <div
+              key={driver.id}
+              className={clsx(
+                'p-3 rounded-lg border cursor-pointer transition-colors',
+                selectedDriver === driver.id
+                  ? 'border-primary-500 bg-primary-50'
+                  : 'border-gray-200 hover:border-gray-300'
+              )}
+              onClick={() => setSelectedDriver(driver.id)}
+            >
+              <div className="flex justify-between items-center">
+                <div>
+                  <p className="font-medium">{driver.name}</p>
+                  <p className="text-sm text-gray-600">{driver.vehicle_info}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm font-medium">{driver.distance_km}km away</p>
+                  <p className="text-xs text-gray-500">ETA: {driver.eta_minutes}min</p>
+                </div>
+                {selectedDriver === driver.id && (
+                  <CheckCircle className="w-5 h-5 text-primary-600 ml-2" />
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Actions */}
+      <div className="flex gap-3">
+        <Button
+          onClick={handleAssign}
+          isLoading={isAssigning}
+          disabled={!selectedDriver}
+          className="flex-1"
+        >
+          Assign Driver
+        </Button>
+        <Button variant="secondary" onClick={onClose}>
+          Cancel
+        </Button>
+      </div>
+    </div>
+  )
+}
 ```
 
-3. **Install Dev Dependencies:**
-```bash
-npm install -D @types/node @tailwindcss/typography
-npm install -D vitest @testing-library/react @testing-library/jest-dom
-npm install -D playwright @playwright/test
-npm install -D eslint @typescript-eslint/eslint-plugin
-npm install -D prettier eslint-config-prettier
+## 📱 Driver App Implementation
+
+### Driver App Structure (Mobile-First)
+```
+apps/driver/
+├── src/
+│   ├── components/
+│   │   ├── mobile/           # Mobile-optimized components
+│   │   │   ├── MobileNav.tsx
+│   │   │   ├── SwipeCard.tsx
+│   │   │   └── BottomSheet.tsx
+│   │   ├── assignments/      # Assignment management
+│   │   │   ├── AssignmentCard.tsx
+│   │   │   ├── AcceptRejectButtons.tsx
+│   │   │   └── TripTimer.tsx
+│   │   ├── navigation/       # GPS and navigation
+│   │   │   ├── MapView.tsx
+│   │   │   ├── RouteDisplay.tsx
+│   │   │   └── LocationPicker.tsx
+│   │   └── status/           # Driver status
+│   │       ├── AvailabilityToggle.tsx
+│   │       ├── EarningsDisplay.tsx
+│   │       └── TripHistory.tsx
+│   ├── hooks/
+│   │   ├── api/              # Driver API hooks
+│   │   │   ├── useDriverAuth.ts
+│   │   │   ├── useAssignments.ts
+│   │   │   ├── useTrips.ts
+│   │   │   └── useLocation.ts
+│   │   ├── mobile/           # Mobile-specific hooks
+│   │   │   ├── useGeolocation.ts
+│   │   │   ├── useOrientation.ts
+│   │   │   └── useVibration.ts
+│   │   └── business/         # Driver business logic
+│   │       ├── useDriverStatus.ts
+│   │       ├── useTripManagement.ts
+│   │       └── useEarnings.ts
+│   ├── routes/
+│   │   ├── __root.tsx
+│   │   ├── index.tsx         # Driver home/status
+│   │   ├── login.tsx         # Driver login
+│   │   ├── assignments/      # Assignment management
+│   │   │   ├── index.tsx     # Available assignments
+│   │   │   └── $id.tsx       # Assignment details
+│   │   ├── trips/            # Active trips
+│   │   │   ├── active.tsx    # Current trip
+│   │   │   ├── navigation.tsx# GPS navigation
+│   │   │   └── complete.tsx  # Trip completion
+│   │   ├── earnings/         # Earnings and payments
+│   │   │   ├── index.tsx
+│   │   │   └── history.tsx
+│   │   └── profile/          # Driver profile
+│   │       ├── index.tsx
+│   │       ├── vehicle.tsx
+│   │       └── documents.tsx
+│   └── main.tsx
 ```
 
-4. **Configure Environment:**
-```bash
-cp .env.example .env.local
+### Driver Assignment Component (Mobile-Optimized)
+```tsx
+// apps/driver/src/components/assignments/AssignmentCard.tsx
+import React, { useState, useEffect } from 'react'
+import { MapPin, Clock, Users, DollarSign, Navigation } from 'lucide-react'
+import { format } from 'date-fns'
+import { Button } from '@luxsuv/ui'
+import { useAssignments } from '../../hooks/api/useAssignments'
+import type { Assignment } from '@luxsuv/api/types'
+
+interface AssignmentCardProps {
+  assignment: Assignment
+  onAccept: (id: number) => void
+  onDecline: (id: number) => void
+}
+
+export const AssignmentCard: React.FC<AssignmentCardProps> = ({
+  assignment,
+  onAccept,
+  onDecline,
+}) => {
+  const [timeLeft, setTimeLeft] = useState(0)
+  const { acceptAssignment, declineAssignment, isProcessing } = useAssignments()
+
+  // Countdown timer for assignment expiration
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = Date.now()
+      const expiresAt = new Date(assignment.expires_at).getTime()
+      const remaining = Math.max(0, expiresAt - now)
+      setTimeLeft(remaining)
+    }, 1000)
+
+    return () => clearInterval(interval)
+  }, [assignment.expires_at])
+
+  const formatTimeLeft = (ms: number) => {
+    const minutes = Math.floor(ms / 60000)
+    const seconds = Math.floor((ms % 60000) / 1000)
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`
+  }
+
+  return (
+    <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6 mx-4">
+      {/* Urgency Indicator */}
+      <div className="flex justify-between items-center mb-4">
+        <div className="flex items-center gap-2">
+          <div className={clsx(
+            'w-3 h-3 rounded-full',
+            timeLeft > 120000 ? 'bg-green-500' :
+            timeLeft > 60000 ? 'bg-yellow-500' : 'bg-red-500'
+          )} />
+          <span className="text-sm font-medium text-gray-600">
+            Expires in {formatTimeLeft(timeLeft)}
+          </span>
+        </div>
+        <div className="text-right">
+          <p className="text-lg font-bold text-green-600">${assignment.estimated_fare}</p>
+          <p className="text-xs text-gray-500">Estimated</p>
+        </div>
+      </div>
+
+      {/* Trip Info */}
+      <div className="space-y-3 mb-6">
+        <div className="flex items-start gap-3">
+          <div className="w-2 h-2 rounded-full bg-green-500 mt-2" />
+          <div className="flex-1">
+            <p className="text-sm font-medium text-gray-900">Pickup</p>
+            <p className="text-sm text-gray-600">{assignment.pickup}</p>
+            <p className="text-xs text-gray-500">
+              {assignment.distance_to_pickup}km • {assignment.eta_to_pickup}min
+            </p>
+          </div>
+        </div>
+        
+        <div className="flex items-start gap-3">
+          <div className="w-2 h-2 rounded-full bg-red-500 mt-2" />
+          <div className="flex-1">
+            <p className="text-sm font-medium text-gray-900">Dropoff</p>
+            <p className="text-sm text-gray-600">{assignment.dropoff}</p>
+            <p className="text-xs text-gray-500">
+              {assignment.trip_distance}km • {assignment.trip_duration}min
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Passenger Info */}
+      <div className="bg-gray-50 rounded-lg p-3 mb-6">
+        <div className="flex justify-between items-center">
+          <div className="flex items-center gap-2">
+            <Users className="w-4 h-4 text-gray-600" />
+            <span className="text-sm text-gray-700">
+              {assignment.passengers} passenger{assignment.passengers !== 1 ? 's' : ''}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Clock className="w-4 h-4 text-gray-600" />
+            <span className="text-sm text-gray-700">
+              {format(new Date(assignment.scheduled_at), 'h:mm a')}
+            </span>
+          </div>
+        </div>
+        {assignment.notes && (
+          <p className="text-sm text-gray-600 mt-2">{assignment.notes}</p>
+        )}
+      </div>
+
+      {/* Action Buttons */}
+      <div className="flex gap-3">
+        <Button
+          onClick={() => onDecline(assignment.id)}
+          variant="secondary"
+          className="flex-1"
+          disabled={isProcessing}
+        >
+          Decline
+        </Button>
+        <Button
+          onClick={handleAssign}
+          isLoading={isProcessing}
+          className="flex-1 bg-green-600 hover:bg-green-700"
+        >
+          Accept Ride
+        </Button>
+      </div>
+    </div>
+  )
+}
 ```
 
-Edit `.env.local`:
+## 📦 Shared Packages Implementation
+
+### Shared UI Package
+```json
+// packages/ui/package.json
+{
+  "name": "@luxsuv/ui",
+  "version": "1.0.0",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./styles": "./dist/styles.css"
+  },
+  "scripts": {
+    "build": "tsup src/index.ts --format cjs,esm --dts",
+    "dev": "tsup src/index.ts --format cjs,esm --dts --watch",
+    "lint": "eslint src --ext ts,tsx",
+    "type-check": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "dependencies": {
+    "@headlessui/react": "^2.1.0",
+    "lucide-react": "^0.446.0",
+    "clsx": "^2.1.0",
+    "tailwind-merge": "^2.5.0"
+  },
+  "devDependencies": {
+    "tsup": "^8.3.0",
+    "typescript": "^5.5.0"
+  }
+}
+```
+
+### Shared API Package
+```tsx
+// packages/api/src/index.ts
+export * from './client'
+export * from './auth'
+export * from './bookings'
+export * from './admin'
+export * from './driver'
+export * from './types'
+
+// Re-export commonly used types
+export type {
+  User,
+  Booking,
+  Driver,
+  Assignment,
+  LoginRequest,
+  CreateBookingRequest,
+} from './types'
+```
+
+```tsx
+// packages/api/src/driver.ts
+import { apiClient } from './client'
+import type { Assignment, Trip, DriverStatus, Earnings } from './types/driver'
+
+export const driverAPI = {
+  // Authentication
+  login: (email: string, password: string) =>
+    apiClient.post('/v1/auth/login', { email, password }),
+
+  // Assignment management
+  getAssignments: (): Promise<Assignment[]> =>
+    apiClient.get('/v1/driver/assignments'),
+    
+  acceptAssignment: (assignmentId: number): Promise<Trip> =>
+    apiClient.post(`/v1/driver/assignments/${assignmentId}/accept`),
+    
+  declineAssignment: (assignmentId: number, reason?: string): Promise<void> =>
+    apiClient.post(`/v1/driver/assignments/${assignmentId}/decline`, { reason }),
+
+  // Trip management
+  startTrip: (tripId: number, location: { lat: number; lng: number }): Promise<Trip> =>
+    apiClient.post(`/v1/driver/trips/${tripId}/start`, { location }),
+    
+  completeTrip: (tripId: number, location: { lat: number; lng: number }): Promise<Trip> =>
+    apiClient.post(`/v1/driver/trips/${tripId}/complete`, { location }),
+    
+  updateLocation: (location: { lat: number; lng: number }): Promise<void> =>
+    apiClient.post('/v1/driver/location', { location }),
+
+  // Status management
+  getStatus: (): Promise<DriverStatus> =>
+    apiClient.get('/v1/driver/status'),
+    
+  setAvailability: (available: boolean): Promise<DriverStatus> =>
+    apiClient.post('/v1/driver/availability', { available }),
+    
+  goOnline: (): Promise<DriverStatus> =>
+    apiClient.post('/v1/driver/status/online'),
+    
+  goOffline: (): Promise<DriverStatus> =>
+    apiClient.post('/v1/driver/status/offline'),
+
+  // Earnings
+  getEarnings: (period: 'today' | 'week' | 'month'): Promise<Earnings> =>
+    apiClient.get(`/v1/driver/earnings?period=${period}`),
+    
+### Driver Mobile Navigation
+```tsx
+// apps/driver/src/components/mobile/MobileNav.tsx
+import React from 'react'
+import { useRouter } from '@tanstack/react-router'
+import { Home, MapPin, Clock, DollarSign, User } from 'lucide-react'
+import { clsx } from 'clsx'
+
+const navItems = [
+  { icon: Home, label: 'Home', path: '/' },
+  { icon: MapPin, label: 'Trips', path: '/trips' },
+  { icon: Clock, label: 'History', path: '/history' },
+  { icon: DollarSign, label: 'Earnings', path: '/earnings' },
+  { icon: User, label: 'Profile', path: '/profile' },
+]
+
+export const MobileNav: React.FC = () => {
+  const router = useRouter()
+  const currentPath = router.state.location.pathname
+
+  return (
+    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 safe-area-pb">
+      <div className="grid grid-cols-5">
+        {navItems.map(({ icon: Icon, label, path }) => {
+          const isActive = currentPath === path
+          
+          return (
+            <button
+              key={path}
+              onClick={() => router.navigate({ to: path })}
+              className={clsx(
+                'flex flex-col items-center justify-center py-2 px-1 transition-colors',
+                isActive
+                  ? 'text-primary-600 bg-primary-50'
+                  : 'text-gray-600 hover:text-gray-900'
+              )}
+            >
+              <Icon className="w-5 h-5 mb-1" />
+              <span className="text-xs font-medium">{label}</span>
+            </button>
+          )
+        })}
+      </div>
+    </nav>
+  )
+}
+```
+
+## 🔧 App-Specific Configurations
+
+### Rider App Environment
 ```env
+# apps/rider/.env.example
 VITE_API_URL=http://localhost:8080
-VITE_APP_NAME=LuxSuv Bookings
+VITE_APP_NAME=LuxSuv Rider
+VITE_APP_TYPE=rider
 VITE_ENVIRONMENT=development
+
+# Rider-specific features
+VITE_ENABLE_GUEST_BOOKING=true
+VITE_ENABLE_PAYMENT=true
+VITE_STRIPE_PUBLISHABLE_KEY=pk_test_...
+
+# Analytics
+VITE_GA_MEASUREMENT_ID=G-XXXXXXXXXX
+VITE_HOTJAR_ID=
 ```
 
-5. **Start Development:**
-```bash
-npm run dev
+### Admin Portal Environment
+```env
+# apps/admin/.env.example
+VITE_API_URL=http://localhost:8080
+VITE_APP_NAME=LuxSuv Operations
+VITE_APP_TYPE=admin
+VITE_ENVIRONMENT=development
+
+# Admin-specific features
+VITE_ENABLE_ANALYTICS=true
+VITE_ENABLE_REAL_TIME=true
+VITE_MAP_API_KEY=
+VITE_DASHBOARD_REFRESH_INTERVAL=30000
+
+# Monitoring
+VITE_SENTRY_DSN=
+VITE_DATADOG_CLIENT_TOKEN=
 ```
 
-## 🎨 Design System Implementation
+### Driver App Environment
+```env
+# apps/driver/.env.example
+VITE_API_URL=http://localhost:8080
+VITE_APP_NAME=LuxSuv Driver
+VITE_APP_TYPE=driver
+VITE_ENVIRONMENT=development
 
-### Tailwind Configuration
+# Driver-specific features
+VITE_ENABLE_GPS=true
+VITE_ENABLE_OFFLINE_MODE=true
+VITE_LOCATION_UPDATE_INTERVAL=10000
+VITE_MAP_API_KEY=
+
+# Mobile features
+VITE_ENABLE_PUSH_NOTIFICATIONS=true
+VITE_ENABLE_VIBRATION=true
+VITE_ENABLE_WAKE_LOCK=true
+```
+
+## 🎨 App-Specific Design Systems
+
+### Rider App (Customer-Friendly)
 ```js
-// tailwind.config.js
-/** @type {import('tailwindcss').Config} */
-export default {
-  content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
+// apps/rider/tailwind.config.js
+import { createTailwindConfig } from '@luxsuv/config/tailwind'
+
+export default createTailwindConfig({
   theme: {
     extend: {
       colors: {
         primary: {
-          50: '#f0f9ff',
-          100: '#e0f2fe', 
-          200: '#bae6fd',
-          300: '#7dd3fc',
-          400: '#38bdf8',
-          500: '#0ea5e9',  // Main brand color
-          600: '#0284c7',
-          700: '#0369a1',
-          800: '#075985',
-          900: '#0c4a6e',
+          // Warm, inviting blues for customers
+          500: '#3b82f6',
+          600: '#2563eb',
         },
-        gray: {
-          50: '#f9fafb',
-          100: '#f3f4f6',
-          200: '#e5e7eb',
-          300: '#d1d5db',
-          400: '#9ca3af',
-          500: '#6b7280',
-          600: '#4b5563',
-          700: '#374151',
-          800: '#1f2937',
-          900: '#111827',
-        },
-        success: {
-          50: '#f0fdf4',
-          500: '#22c55e',
-          600: '#16a34a',
-        },
-        warning: {
-          50: '#fffbeb', 
+        accent: {
+          // Gold accents for luxury feel
+          400: '#fbbf24',
           500: '#f59e0b',
-          600: '#d97706',
         },
-        error: {
-          50: '#fef2f2',
-          500: '#ef4444',
-          600: '#dc2626',
+      },
+      fontFamily: {
+        sans: ['Inter', 'system-ui', 'sans-serif'],
+      },
+      borderRadius: {
+        'xl': '1rem',
+        '2xl': '1.5rem',
+      },
+    },
+  },
+})
+```
+
+### Admin Portal (Professional)
+```js
+// apps/admin/tailwind.config.js
+import { createTailwindConfig } from '@luxsuv/config/tailwind'
+
+export default createTailwindConfig({
+  theme: {
+    extend: {
+      colors: {
+        primary: {
+          // Professional navy blues for admin
+          500: '#1e40af',
+          600: '#1d4ed8',
+        },
+        accent: {
+          // Subtle accent colors for data viz
+          500: '#8b5cf6',
+          600: '#7c3aed',
+        },
+      },
+      fontFamily: {
+        sans: ['Inter', 'system-ui', 'sans-serif'],
+        mono: ['JetBrains Mono', 'monospace'], // For data tables
+      },
+    },
+  },
+})
+```
+
+### Driver App (Mobile-Optimized)
+```js
+// apps/driver/tailwind.config.js
+import { createTailwindConfig } from '@luxsuv/config/tailwind'
+
+export default createTailwindConfig({
+  theme: {
+    extend: {
+      colors: {
+        primary: {
+          // Vibrant greens for drivers (go/stop)
+          500: '#10b981',
+          600: '#059669',
+        },
+        accent: {
+          // Orange for alerts and actions
+          500: '#f97316',
+          600: '#ea580c',
         },
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
       },
       spacing: {
-        '18': '4.5rem',
-        '88': '22rem',
+        'safe-top': 'env(safe-area-inset-top)',
+        'safe-bottom': 'env(safe-area-inset-bottom)',
       },
-      animation: {
-        'fade-in': 'fadeIn 0.5s ease-in-out',
-        'slide-up': 'slideUp 0.3s ease-out',
-        'pulse-subtle': 'pulseSubtle 2s infinite',
-      },
-      keyframes: {
-        fadeIn: {
-          '0%': { opacity: '0' },
-          '100%': { opacity: '1' },
-        },
-        slideUp: {
-          '0%': { transform: 'translateY(20px)', opacity: '0' },
-          '100%': { transform: 'translateY(0)', opacity: '1' },
-        },
-        pulseSubtle: {
-          '0%, 100%': { opacity: '1' },
-          '50%': { opacity: '0.8' },
-        },
+      minHeight: {
+        'screen-safe': 'calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom))',
       },
     },
   },
-  plugins: [
-    require('@tailwindcss/forms'),
-    require('@tailwindcss/typography'),
-  ],
+})
+```
+
+## 🚀 Development Workflow
+
+### Start All Apps
+```bash
+# Start all apps in development mode
+pnpm dev
+
+# Or start individually
+pnpm dev:rider     # http://localhost:3001
+pnpm dev:admin     # http://localhost:3002  
+pnpm dev:driver    # http://localhost:3003
+```
+
+### Build and Deploy
+```bash
+# Build all apps
+pnpm build
+
+# Build specific app
+turbo run build --filter=rider
+
+# Deploy to different environments
+pnpm deploy:rider --env=staging
+pnpm deploy:admin --env=production
+pnpm deploy:driver --env=production
+```
+
+## 🎯 App-Specific Features
+
+### 🚗 Rider App Features
+
+#### Guest Booking Flow
+```tsx
+// apps/rider/src/routes/book.tsx
+import { createFileRoute } from '@tanstack/react-router'
+import { useState } from 'react'
+import { ArrowRight, Clock, MapPin } from 'lucide-react'
+import { Button, Input } from '@luxsuv/ui'
+import { BookingForm } from '../components/forms/BookingForm'
+import { GuestAccessModal } from '../components/modals/GuestAccessModal'
+
+export const Route = createFileRoute('/book')({
+  component: QuickBookingPage,
+})
+
+function QuickBookingPage() {
+  const [showGuestModal, setShowGuestModal] = useState(false)
+  const [bookingData, setBookingData] = useState(null)
+
+  const handleGuestBooking = (data) => {
+    setBookingData(data)
+    setShowGuestModal(true)
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      {/* Hero Section */}
+      <div className="container mx-auto px-4 pt-12 pb-8">
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-bold text-gray-900 mb-4">
+            Luxury Transportation
+          </h1>
+          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+            Book premium SUV rides with professional drivers. 
+            No account required for quick bookings.
+          </p>
+        </div>
+
+        {/* Quick Booking Card */}
+        <div className="max-w-2xl mx-auto bg-white rounded-2xl shadow-xl p-8">
+          <BookingForm
+            onSubmit={handleGuestBooking}
+            submitLabel="Book Now"
+            showContactFields={true}
+          />
+        </div>
+      </div>
+
+      {/* Guest Access Modal */}
+      <GuestAccessModal
+        isOpen={showGuestModal}
+        onClose={() => setShowGuestModal(false)}
+        bookingData={bookingData}
+      />
+    </div>
+  )
+}
 }
 ```
 
@@ -1218,33 +2176,196 @@ export const Input: React.FC<InputProps> = ({
 }
 ```
 
-## 🔧 API Integration
+## 🔄 Real-time Features
 
-### API Client Setup
+### WebSocket Integration
 ```tsx
-// src/lib/api/client.ts
-import { QueryClient } from '@tanstack/react-query'
+// packages/api/src/websocket.ts
+import { useEffect, useRef, useState } from 'react'
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080'
-
-export class APIError extends Error {
-  constructor(
-    public status: number,
-    public code?: string,
-    public details?: string,
-    message?: string
-  ) {
-    super(message || 'API Error')
-    this.name = 'APIError'
-  }
+interface UseWebSocketOptions {
+  onMessage?: (message: any) => void
+  onConnect?: () => void
+  onDisconnect?: () => void
+  reconnectAttempts?: number
+  reconnectInterval?: number
 }
 
-export class APIClient {
-  private baseURL: string
+export function useWebSocket(url: string, options: UseWebSocketOptions = {}) {
+  const {
+    onMessage,
+    onConnect,
+    onDisconnect,
+    reconnectAttempts = 5,
+    reconnectInterval = 5000,
+  } = options
 
-  constructor(baseURL: string = API_BASE_URL) {
-    this.baseURL = baseURL
+  const [isConnected, setIsConnected] = useState(false)
+  const [lastMessage, setLastMessage] = useState<any>(null)
+  const wsRef = useRef<WebSocket | null>(null)
+  const reconnectCountRef = useRef(0)
+
+  const connect = () => {
+    const token = localStorage.getItem('auth_token') || localStorage.getItem('guest_session_token')
+    const wsUrl = `${url}?token=${token}`
+    
+    try {
+      wsRef.current = new WebSocket(wsUrl)
+      
+      wsRef.current.onopen = () => {
+        setIsConnected(true)
+        reconnectCountRef.current = 0
+        onConnect?.()
+      }
+      
+      wsRef.current.onmessage = (event) => {
+        const message = JSON.parse(event.data)
+        setLastMessage(message)
+        onMessage?.(message)
+      }
+      
+      wsRef.current.onclose = () => {
+        setIsConnected(false)
+        onDisconnect?.()
+        
+        // Auto-reconnect
+        if (reconnectCountRef.current < reconnectAttempts) {
+          setTimeout(() => {
+            reconnectCountRef.current++
+            connect()
+          }, reconnectInterval)
+        }
+      }
+      
+      wsRef.current.onerror = (error) => {
+        console.error('WebSocket error:', error)
+      }
+    } catch (error) {
+      console.error('Failed to create WebSocket connection:', error)
+    }
   }
+
+  useEffect(() => {
+    connect()
+    
+    return () => {
+      if (wsRef.current) {
+        wsRef.current.close()
+      }
+    }
+  }, [url])
+
+  const sendMessage = (message: any) => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify(message))
+    }
+  }
+
+  return {
+    isConnected,
+    lastMessage,
+    sendMessage,
+    reconnect: connect,
+  }
+}
+```
+
+## 🎯 App-Specific Implementation Priorities
+
+### 🚗 Rider App - Phase 1 (MVP)
+- [ ] Landing page with quick booking
+- [ ] Guest access flow (email → code → booking)
+- [ ] Booking form with validation
+- [ ] Booking status tracking
+- [ ] User registration and login
+- [ ] Authenticated user booking flow
+- [ ] Booking history and management
+
+### 🏢 Admin Portal - Phase 1 (Core Operations)
+- [ ] Admin authentication and dashboard
+- [ ] Booking management (view, assign, cancel)
+- [ ] Driver management (view status, availability)
+- [ ] Manual driver assignment interface
+- [ ] Real-time operations view
+- [ ] User management (riders, drivers)
+- [ ] Basic analytics and reporting
+
+### 📱 Driver App - Phase 1 (Essential)
+- [ ] Driver authentication
+- [ ] Online/offline status toggle
+- [ ] Assignment notifications and acceptance
+- [ ] Trip start/complete workflow
+- [ ] Basic earnings display
+- [ ] Location sharing and GPS
+- [ ] Trip navigation interface
+
+## 📋 Development Setup Checklist
+
+### Initial Setup
+- [ ] Initialize monorepo with pnpm workspaces
+- [ ] Set up Turborepo for build orchestration
+- [ ] Create shared packages (UI, API, Utils)
+- [ ] Configure TypeScript for all packages
+- [ ] Set up ESLint and Prettier configs
+- [ ] Configure Tailwind for each app
+
+### Rider App Setup
+- [ ] Create Vite React app with TypeScript
+- [ ] Install TanStack Router and Query
+- [ ] Set up authentication store and hooks
+- [ ] Implement guest access flow
+- [ ] Create booking forms and validation
+- [ ] Add responsive design for mobile
+
+### Admin Portal Setup
+- [ ] Create Vite React app with TypeScript
+- [ ] Install dashboard and table dependencies
+- [ ] Set up admin authentication
+- [ ] Implement real-time dashboard
+- [ ] Create data tables with filtering
+- [ ] Add assignment management interface
+
+### Driver App Setup
+- [ ] Create Vite React app with TypeScript
+- [ ] Configure PWA with service worker
+- [ ] Set up mobile-first responsive design
+- [ ] Implement geolocation and GPS
+- [ ] Create assignment management interface
+- [ ] Add trip tracking and navigation
+- [ ] Configure push notifications
+
+### Deployment Setup
+- [ ] Configure Vercel for rider app
+- [ ] Configure Netlify for admin portal
+- [ ] Configure PWA hosting for driver app
+- [ ] Set up CI/CD pipelines
+- [ ] Configure environment variables
+- [ ] Set up monitoring and analytics
+
+## 🚀 Deployment URLs
+
+### Development
+- **Rider App**: http://localhost:3001
+- **Admin Portal**: http://localhost:3002
+- **Driver App**: http://localhost:3003
+- **Shared UI Storybook**: http://localhost:6006
+
+### Production
+- **Rider App**: https://book.luxsuv.com
+- **Admin Portal**: https://admin.luxsuv.com
+- **Driver App**: https://driver.luxsuv.com
+- **API Gateway**: https://api.luxsuv.com
+
+This multi-app architecture provides:
+
+✅ **Separation of Concerns** - Each app focuses on specific user needs
+✅ **Independent Deployment** - Deploy apps separately without affecting others  
+✅ **Optimized UX** - Tailored interfaces for each user type
+✅ **Scalable Development** - Teams can work on different apps independently
+✅ **Mobile-Ready** - Driver and rider apps optimized for mobile use
+✅ **Shared Code** - Common components and logic in shared packages
+
+Each app can be developed, tested, and deployed independently while sharing common functionality through the shared packages. This approach scales well as your team grows and provides the flexibility to migrate to React Native for mobile apps later.
 
   private async request<T>(
     endpoint: string,
@@ -2796,11 +3917,112 @@ export default defineConfig({
 ```
 
 ### Environment Variables
-```bash
-# .env.example
-VITE_API_URL=http://localhost:8080
-VITE_APP_NAME=LuxSuv Bookings
-VITE_ENVIRONMENT=development
+#### Mobile-Responsive Booking Card
+```tsx
+// apps/rider/src/components/features/booking/BookingCard.tsx
+import React from 'react'
+import { format } from 'date-fns'
+import { MapPin, Clock, Users, MoreVertical } from 'lucide-react'
+import { Button } from '@luxsuv/ui'
+import type { Booking } from '@luxsuv/api/types'
+
+interface BookingCardProps {
+  booking: Booking
+  onView: () => void
+  onEdit?: () => void
+  onCancel?: () => void
+}
+
+export const BookingCard: React.FC<BookingCardProps> = ({
+  booking,
+  onView,
+  onEdit,
+  onCancel,
+}) => {
+  const statusConfig = {
+    pending: { color: 'amber', label: 'Pending' },
+    confirmed: { color: 'blue', label: 'Confirmed' },
+    assigned: { color: 'purple', label: 'Driver Assigned' },
+    on_trip: { color: 'green', label: 'In Progress' },
+    completed: { color: 'gray', label: 'Completed' },
+    canceled: { color: 'red', label: 'Canceled' },
+  }
+
+  const status = statusConfig[booking.status]
+
+  return (
+    <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden">
+      {/* Status Header */}
+      <div className={`h-2 bg-${status.color}-500`} />
+      
+      <div className="p-6">
+        {/* Header */}
+        <div className="flex justify-between items-start mb-4">
+          <div>
+            <p className="text-sm text-gray-500">Booking #{booking.id}</p>
+            <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium bg-${status.color}-100 text-${status.color}-800`}>
+              {status.label}
+            </span>
+          </div>
+          <button className="p-1 hover:bg-gray-100 rounded">
+            <MoreVertical className="w-4 h-4 text-gray-400" />
+          </button>
+        </div>
+
+        {/* Route */}
+        <div className="space-y-3 mb-4">
+          <div className="flex items-start gap-3">
+            <div className="w-3 h-3 rounded-full bg-green-500 mt-1" />
+            <div>
+              <p className="text-sm font-medium text-gray-900">{booking.pickup}</p>
+              <p className="text-xs text-gray-500">Pickup location</p>
+            </div>
+          </div>
+          
+          <div className="flex items-start gap-3">
+            <div className="w-3 h-3 rounded-full bg-red-500 mt-1" />
+            <div>
+              <p className="text-sm font-medium text-gray-900">{booking.dropoff}</p>
+              <p className="text-xs text-gray-500">Destination</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Details */}
+        <div className="flex justify-between items-center text-sm text-gray-600 mb-4">
+          <div className="flex items-center gap-1">
+            <Clock className="w-4 h-4" />
+            {format(new Date(booking.scheduled_at), 'MMM d, h:mm a')}
+          </div>
+          <div className="flex items-center gap-1">
+            <Users className="w-4 h-4" />
+            {booking.passengers} passenger{booking.passengers !== 1 ? 's' : ''}
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="flex gap-2">
+          <Button 
+            onClick={onView}
+            variant="secondary"
+            size="sm"
+            className="flex-1"
+          >
+            View Details
+          </Button>
+          {booking.status === 'pending' && onEdit && (
+            <Button 
+              onClick={onEdit}
+              size="sm"
+              className="flex-1"
+            >
+              Edit Booking
+            </Button>
+          )}
+        </div>
+      </div>
+    </div>
+  )
 
 # Optional: Analytics and Monitoring
 VITE_GA_MEASUREMENT_ID=
@@ -2970,53 +4192,300 @@ function AdminRoute() {
     </Suspense>
   )
 }
-```
+// apps/admin/src/components/dashboard/LiveOperations.tsx
+import React, { useEffect } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { MapPin, Clock, AlertTriangle, CheckCircle } from 'lucide-react'
+import { useWebSocket } from '../../hooks/useWebSocket'
+import { adminAPI } from '@luxsuv/api'
 
-### Image Optimization
-```tsx
-// src/components/ui/OptimizedImage.tsx
-import React, { useState } from 'react'
-import { clsx } from 'clsx'
+export const LiveOperations: React.FC = () => {
+  const { data: liveData, refetch } = useQuery({
+    queryKey: ['live-operations'],
+    queryFn: () => adminAPI.getLiveOperations(),
+    refetchInterval: 30000, // Refresh every 30 seconds
+  })
 
-interface OptimizedImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
-  fallback?: string
-  placeholder?: React.ReactNode
-}
-
-export const OptimizedImage: React.FC<OptimizedImageProps> = ({
-  src,
-  alt,
-  fallback = '/images/placeholder.jpg',
-  placeholder,
-  className,
-  ...props
-}) => {
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState(false)
+  // WebSocket for real-time updates
+  const { lastMessage } = useWebSocket('/v1/admin/live', {
+    onMessage: (message) => {
+      if (message.type === 'booking_update' || message.type === 'driver_update') {
+        refetch()
+      }
+    },
+  })
 
   return (
-    <div className={clsx('relative overflow-hidden', className)}>
-      {isLoading && placeholder && (
-        <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
-          {placeholder}
+    <div className="space-y-6">
+      {/* Status Overview */}
+      <div className="grid grid-cols-4 gap-4">
+        <StatusCard
+          title="Active Trips"
+          count={liveData?.activeTrips || 0}
+          icon={<MapPin className="w-5 h-5" />}
+          color="blue"
+        />
+        <StatusCard
+          title="Pending Assignments"
+          count={liveData?.pendingAssignments || 0}
+          icon={<Clock className="w-5 h-5" />}
+          color="amber"
+        />
+        <StatusCard
+          title="Online Drivers"
+          count={liveData?.onlineDrivers || 0}
+          icon={<CheckCircle className="w-5 h-5" />}
+          color="green"
+        />
+        <StatusCard
+          title="Issues"
+          count={liveData?.issues || 0}
+          icon={<AlertTriangle className="w-5 h-5" />}
+          color="red"
+        />
+      </div>
+
+      {/* Live Activity Feed */}
+      <div className="bg-white rounded-xl shadow-sm border">
+        <div className="p-6 border-b">
+          <h3 className="text-lg font-semibold">Live Activity</h3>
         </div>
-      )}
+        <div className="max-h-96 overflow-y-auto">
+          {liveData?.recentActivity?.map((activity, index) => (
+            <ActivityItem key={index} activity={activity} />
+          ))}
+        </div>
+      </div>
+    </div>
+const StatusCard: React.FC<{
+  title: string
+  count: number
+  icon: React.ReactNode
+  color: string
+}> = ({ title, count, icon, color }) => (
+  <div className="bg-white p-4 rounded-lg border shadow-sm">
+    <div className="flex items-center justify-between">
+      <div>
+        <p className="text-sm text-gray-600">{title}</p>
+        <p className="text-2xl font-bold text-gray-900">{count}</p>
+      </div>
+      <div className={`p-2 rounded-lg bg-${color}-100 text-${color}-600`}>
+        {icon}
+      </div>
+    </div>
+  </div>
+)
+```
+
+### 📱 Driver App Features
+
+#### Driver Status Toggle
+```tsx
+// apps/driver/src/components/status/AvailabilityToggle.tsx
+import React from 'react'
+import { Power, Zap } from 'lucide-react'
+import { Button } from '@luxsuv/ui'
+import { useDriverStatus } from '../../hooks/api/useDriverStatus'
+
+export const AvailabilityToggle: React.FC = () => {
+  const { status, toggleAvailability, isToggling } = useDriverStatus()
+
+  return (
+    <div className="bg-white rounded-2xl shadow-lg p-6 mx-4">
+      <div className="text-center">
+        <div className={clsx(
+          'w-20 h-20 rounded-full mx-auto mb-4 flex items-center justify-center',
+          status.available ? 'bg-green-100' : 'bg-gray-100'
+        )}>
+          {status.available ? (
+            <Zap className="w-10 h-10 text-green-600" />
+          ) : (
+            <Power className="w-10 h-10 text-gray-400" />
+          )}
+        </div>
+        
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">
+          {status.available ? 'Online' : 'Offline'}
+        </h2>
+        
+        <p className="text-gray-600 mb-6">
+          {status.available 
+            ? 'You\'re available to receive ride requests'
+            : 'Go online to start receiving ride requests'
+          }
+        </p>
+        
+        <Button
+          onClick={toggleAvailability}
+          isLoading={isToggling}
+```
+
+## 🚀 Deployment Strategies
+
+### Rider App Deployment (Vercel)
+```json
+// apps/rider/vercel.json
+{
+  "framework": "vite",
+  "buildCommand": "cd ../.. && pnpm build --filter=rider",
+  "outputDirectory": "dist",
+  "installCommand": "cd ../.. && pnpm install",
+  "env": {
+    "VITE_API_URL": "https://api.luxsuv.com",
+    "VITE_APP_TYPE": "rider"
+  },
+  "routes": [
+    { "handle": "filesystem" },
+    { "src": "/(.*)", "dest": "/index.html" }
+  ]
+}
+```
+
+### Admin Portal Deployment (Netlify)
+```toml
+# apps/admin/netlify.toml
+[build]
+  command = "cd ../.. && pnpm build --filter=admin"
+  publish = "dist"
+  
+[build.environment]
+  VITE_API_URL = "https://api.luxsuv.com"
+  VITE_APP_TYPE = "admin"
+  
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+  
+[context.production.environment]
+  VITE_ENVIRONMENT = "production"
+  
+[context.staging.environment]
+  VITE_ENVIRONMENT = "staging"
+  VITE_API_URL = "https://staging-api.luxsuv.com"
+```
+
+### Driver App PWA Configuration
+```json
+// apps/driver/public/manifest.json
+{
+  "name": "LuxSuv Driver",
+  "short_name": "LuxSuv Driver",
+  "description": "LuxSuv driver app for managing rides and assignments",
+  "theme_color": "#10b981",
+  "background_color": "#ffffff", 
+  "display": "standalone",
+  "orientation": "portrait",
+  "scope": "/",
+  "start_url": "/",
+  "icons": [
+    {
+      "src": "icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-512x512.png", 
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["business", "productivity"],
+  "screenshots": [
+    {
+      "src": "screenshots/driver-home.png",
+      "sizes": "540x720",
+      "type": "image/png"
+    }
+  ]
+}
+```
+
+## 📱 Mobile-First Driver App
+
+### Touch-Optimized Assignment Interface
+```tsx
+// apps/driver/src/components/assignments/SwipeAssignment.tsx
+import React, { useRef } from 'react'
+import { motion, useMotionValue, useTransform, PanInfo } from 'framer-motion'
+import { Check, X, Navigation } from 'lucide-react'
+import type { Assignment } from '@luxsuv/api/types'
+
+interface SwipeAssignmentProps {
+  assignment: Assignment
+  onAccept: () => void
+  onDecline: () => void
+              : 'bg-green-600 hover:bg-green-700'
+          )}
       
       <img
         src={error ? fallback : src}
         alt={alt}
         onLoad={() => setIsLoading(false)}
         onError={() => {
-          setError(true)
-          setIsLoading(false)
-        }}
-        className={clsx(
-          'transition-opacity duration-300',
-          isLoading ? 'opacity-0' : 'opacity-100',
-          className
-        )}
-        {...props}
-      />
+export const SwipeAssignment: React.FC<SwipeAssignmentProps> = ({
+  assignment,
+  onAccept,
+  onDecline,
+}) => {
+  const constraintsRef = useRef(null)
+  const x = useMotionValue(0)
+  const opacity = useTransform(x, [-150, 0, 150], [0.7, 1, 0.7])
+  const acceptOpacity = useTransform(x, [50, 150], [0, 1])
+  const declineOpacity = useTransform(x, [-150, -50], [1, 0])
+
+  const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+    if (info.offset.x > 150) {
+      onAccept()
+    } else if (info.offset.x < -150) {
+      onDecline()
+    }
+  }
+
+  return (
+    <div ref={constraintsRef} className="relative bg-white rounded-2xl shadow-lg mx-4 overflow-hidden">
+      {/* Background Actions */}
+      <motion.div 
+        className="absolute inset-0 bg-red-500 flex items-center justify-start pl-8"
+        style={{ opacity: declineOpacity }}
+      >
+        <X className="w-8 h-8 text-white" />
+      </motion.div>
+      
+      <motion.div 
+        className="absolute inset-0 bg-green-500 flex items-center justify-end pr-8"
+        style={{ opacity: acceptOpacity }}
+      >
+        <Check className="w-8 h-8 text-white" />
+      </motion.div>
+
+      {/* Draggable Card */}
+      <motion.div
+        drag="x"
+        dragConstraints={constraintsRef}
+        dragElastic={0.2}
+        onDragEnd={handleDragEnd}
+        style={{ x, opacity }}
+        className="bg-white p-6 relative z-10"
+      >
+        {/* Assignment content similar to previous example */}
+        <div className="space-y-4">
+          {/* Trip details */}
+          <div className="text-center">
+            <p className="text-lg font-bold text-green-600">${assignment.estimated_fare}</p>
+            <p className="text-sm text-gray-600">{assignment.trip_distance}km • {assignment.trip_duration}min</p>
+          </div>
+          
+          {/* Swipe instruction */}
+          <div className="text-center py-2">
+            <p className="text-xs text-gray-500">
+              Swipe left to decline • Swipe right to accept
+            </p>
+          </div>
+        </div>
+      </motion.div>
     </div>
   )
 }
@@ -3024,77 +4493,118 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
 
 ## 🌍 Internationalization (i18n)
 
-### Setup i18next
+## 🔄 State Management Examples
+
+### Driver Status Store
 ```tsx
 // src/lib/i18n/index.ts
-import i18n from 'i18next'
-import { initReactI18next } from 'react-i18next'
-import Backend from 'i18next-http-backend'
-import LanguageDetector from 'i18next-browser-languagedetector'
-
-i18n
-  .use(Backend)
-  .use(LanguageDetector)
-  .use(initReactI18next)
-  .init({
-    lng: 'en',
-    fallbackLng: 'en',
-    debug: import.meta.env.DEV,
-
-    interpolation: {
-      escapeValue: false,
-    },
-
-    backend: {
-      loadPath: '/locales/{{lng}}/{{ns}}.json',
-    },
-
-    detection: {
-      order: ['localStorage', 'navigator', 'htmlTag'],
-      caches: ['localStorage'],
-    },
-  })
-
-export default i18n
-```
-
-### Translation Files
-```json
-// public/locales/en/common.json
-{
-  "navigation": {
-    "home": "Home",
-    "bookings": "Bookings", 
-    "profile": "Profile",
-    "admin": "Admin"
-  },
-  "booking": {
-    "create": "Create Booking",
-    "pickup": "Pickup Location",
-    "dropoff": "Dropoff Location", 
-    "passengers": "Passengers",
-    "luggage": "Luggage",
-    "notes": "Special Notes",
-    "scheduled_time": "Scheduled Time"
-  },
-  "auth": {
-    "login": "Sign In",
-    "register": "Sign Up",
-    "logout": "Sign Out",
-    "email": "Email Address",
-    "password": "Password",
-    "name": "Full Name",
-    "phone": "Phone Number"
-  },
-  "status": {
-    "pending": "Pending",
-    "confirmed": "Confirmed",
-    "assigned": "Assigned",
-    "on_trip": "On Trip",
-    "completed": "Completed",
-    "canceled": "Canceled"
-  }
+interface Assignment {
+  id: number
+  pickup: string
+  dropoff: string
+  passenger_name: string
+  scheduled_at: string
+  estimated_fare: number
+  expires_at: string
 }
+
+interface DriverStatusState {
+  // Status
+  isOnline: boolean
+  isAvailable: boolean
+  currentLocation: Location | null
+  
+  // Current assignment/trip
+  currentAssignment: Assignment | null
+  currentTrip: Trip | null
+  
+  // Pending assignments
+  pendingAssignments: Assignment[]
+  
+  // Actions
+  setOnline: (online: boolean) => void
+  setAvailable: (available: boolean) => void
+  updateLocation: (location: Location) => void
+  setCurrentAssignment: (assignment: Assignment | null) => void
+  addPendingAssignment: (assignment: Assignment) => void
+  removePendingAssignment: (assignmentId: number) => void
+  
+  // Trip actions
+  startTrip: (trip: Trip) => void
+  completeTrip: () => void
+}
+
+export const useDriverStatusStore = create<DriverStatusState>()(
+  subscribeWithSelector((set, get) => ({
+    // Initial state
+    isOnline: false,
+    isAvailable: false,
+    currentLocation: null,
+    currentAssignment: null,
+    currentTrip: null,
+    pendingAssignments: [],
+    
+    // Actions
+    setOnline: (online) => {
+      set({ isOnline: online })
+      if (!online) {
+        set({ isAvailable: false, currentAssignment: null })
+      }
+    },
+    
+    setAvailable: (available) => {
+      const { isOnline } = get()
+      if (isOnline) {
+        set({ isAvailable: available })
+      }
+    },
+    
+    updateLocation: (location) => {
+      set({ currentLocation: location })
+    },
+    
+    setCurrentAssignment: (assignment) => {
+      set({ currentAssignment: assignment })
+      if (assignment) {
+        set({ isAvailable: false })
+      }
+    },
+    
+    addPendingAssignment: (assignment) => {
+      set((state) => ({
+        pendingAssignments: [...state.pendingAssignments, assignment],
+      }))
+    },
+    
+    removePendingAssignment: (assignmentId) => {
+      set((state) => ({
+        pendingAssignments: state.pendingAssignments.filter(a => a.id !== assignmentId),
+      }))
+    },
+    
+    startTrip: (trip) => {
+      set({ currentTrip: trip, currentAssignment: null })
+    },
+    
+    completeTrip: () => {
+      set({ currentTrip: null, isAvailable: true })
+    },
+  }))
+)
+
+// Location tracking subscription
+useDriverStatusStore.subscribe(
+  (state) => state.isOnline,
+  (isOnline) => {
+    if (isOnline) {
+      // Start location tracking
+      startLocationTracking()
+    } else {
+      // Stop location tracking
+      stopLocationTracking()
+    }
+  timestamp: number
+)
 ```
 
 ## 🏃‍♂️ Getting Started Checklist
