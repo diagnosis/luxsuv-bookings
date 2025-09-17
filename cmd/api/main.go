@@ -56,13 +56,21 @@ func main() {
 
 	//repo and handlers
 	bookRepo := postgres.NewBookingRepo(pool)
+	idempotencyRepo := postgres.NewIdempotencyRepo(pool)
 	userRepo := postgres.NewUsersRepo(pool)
 	verifyRepo := postgres.NewVerifyRepo(pool)
 	//
-	guestBookings := guest.NewBookingsHandler(bookRepo)
-	guestAccess := guest.NewAccessHandler(verifyRepo, emailSvc)
+	guestBookings := guest.NewBookingsHandler(bookRepo, idempotencyRepo, userRepo)
+	guestAccess := guest.NewAccessHandler(verifyRepo, emailSvc, userRepo)
 
-	authH := handlers.NewAuthHandler(userRepo, verifyRepo, emailSvc)
+	// Rate limiting for guest access requests
+	accessRateLimit := mw.NewRateLimiter(pool, mw.RateLimitConfig{
+		Requests: 5,                           // 5 requests per window
+		Window:   time.Minute,                 // 1 minute window
+		KeyFunc:  mw.GuestAccessRateLimitKeyFunc,
+	})
+
+	authH := handlers.NewAuthHandler(userRepo, verifyRepo, emailSvc, pool)
 	riderH := handlers.NewRiderBookingsHandler(bookRepo, userRepo)
 
 	//router
@@ -90,7 +98,25 @@ func main() {
 	})
 	//
 	r.Mount("/v1/guest/bookings", guestBookings.Routes())
-	r.Mount("/v1/guest/access", guestAccess.Routes())
+
+	// Mount guest access with rate limiting
+	r.Group(func(gr chi.Router) {
+		gr.Use(accessRateLimit.Middleware())
+		gr.Mount("/v1/guest/access", guestAccess.Routes())
+	})
+
+	// Add email verification cleanup job (run every hour)
+	go func() {
+		ticker := time.NewTicker(time.Hour)
+		defer ticker.Stop()
+		for range ticker.C {
+			if deleted, err := verifyRepo.DeleteExpiredTokens(context.Background()); err != nil {
+				log.Printf("failed to cleanup expired verification tokens: %v", err)
+			} else if deleted > 0 {
+				log.Printf("cleaned up %d expired verification tokens", deleted)
+			}
+		}
+	}()
 
 	r.Mount("/v1/auth", authH.Routes())
 	r.Group(func(gr chi.Router) {

@@ -6,7 +6,7 @@
 @phone   = +15551234567
 @future  = 2025-10-01T15:00:00Z
 @notes   = 2 bags
-@code    = 364000
+@code    = 812000
 
 ### ───────────────────────────────────────────────────────────────────────────
 ### 1) Create guest booking  -> returns { id, manage_token, status, scheduled_at }
@@ -66,7 +66,7 @@ Content-Type: application/json
 ### 4) List my bookings (guest session)
 ### ───────────────────────────────────────────────────────────────────────────
 GET {{host}}/v1/guest/bookings?limit=10&offset=0
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjAsImVtYWlsIjoiZ3Vlc3QxQGV4YW1wbGUuY29tIiwicm9sZSI6Imd1ZXN0Iiwic2NvcGUiOiJndWVzdC5ib29raW5nczpyZWFkIGd1ZXN0LmJvb2tpbmdzOndyaXRlIiwiYXVkIjpbImx1eHN1di1hcGkiXSwiZXhwIjoxNzU4MDMzNDE5LCJuYmYiOjE3NTgwMzE2MTksImlhdCI6MTc1ODAzMTYxOX0.a0_gGr5nMNS8HlooULqfDWXIoCw2ka20e8dp30G6sa8
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjAsImVtYWlsIjoiZ3Vlc3QxQGV4YW1wbGUuY29tIiwicm9sZSI6Imd1ZXN0Iiwic2NvcGUiOiJndWVzdC5ib29raW5nczpyZWFkIGd1ZXN0LmJvb2tpbmdzOndyaXRlIiwiYXVkIjpbImx1eHN1di1hcGkiXSwiZXhwIjoxNzU4MDQxMzkwLCJuYmYiOjE3NTgwMzk1OTAsImlhdCI6MTc1ODAzOTU5MH0.K8bT6-2vZyfprSQzUoliznuCKT9ekZJ2NWIY3Upj1PA
 
 ### ───────────────────────────────────────────────────────────────────────────
 ### 5) Get a booking by manage_token (no session required)

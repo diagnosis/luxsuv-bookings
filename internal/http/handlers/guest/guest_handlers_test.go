@@ -1,509 +1,646 @@
 package guest_test
 
-//
-//import (
-//	"bytes"
-//	"encoding/json"
-//	"net"
-//	"net/http"
-//	"net/http/httptest"
-//	"strings"
-//	"testing"
-//	"time"
-//
-//	"github.com/go-chi/chi/v5"
-//
-//	// your project imports
-//	"github.com/diagnosis/luxsuv-bookings/internal/domain"
-//	guest "github.com/diagnosis/luxsuv-bookings/internal/http/handlers/guest"
-//	"github.com/diagnosis/luxsuv-bookings/internal/platform/auth"
-//)
-//
-//// ---------- fakes / mocks ----------
-//
-//type fakeMailer struct {
-//	lastTo   string
-//	lastBody string
-//}
-//
-//func (m *fakeMailer) Send(toEmail, toName, subj, textBody, htmlBody string) (string, error) {
-//	m.lastTo = toEmail
-//	m.lastBody = textBody + htmlBody
-//	return "ok", nil
-//}
-//func (m *fakeMailer) SendGuestAccess(email, code, link string) (string, error) {
-//	m.lastTo = email
-//	m.lastBody = code + " " + link
-//	return "ok", nil
-//}
-//
-//// Minimal VerifyRepo fake
-//type fakeVerifyRepo struct {
-//	// email -> bcrypt(code) not needed; we’ll accept any code we stored raw for simplicity
-//	codeByEmail   map[string]string
-//	magicToEmail  map[string]string
-//	expireByEmail map[string]time.Time
-//}
-//
-//func newFakeVerifyRepo() *fakeVerifyRepo {
-//	return &fakeVerifyRepo{
-//		codeByEmail:   map[string]string{},
-//		magicToEmail:  map[string]string{},
-//		expireByEmail: map[string]time.Time{},
-//	}
-//}
-//func (f *fakeVerifyRepo) CreateGuestAccess(_ interface{}, email, codeHash, magic string, exp time.Time, _ net.IP) error {
-//	// store raw “codeHash” as code to simplify; handler uses bcrypt in real impl
-//	f.codeByEmail[email] = codeHash
-//	f.magicToEmail[magic] = email
-//	f.expireByEmail[email] = exp
-//	return nil
-//}
-//func (f *fakeVerifyRepo) CheckGuestCode(_ interface{}, email, code string) (bool, error) {
-//	want, ok := f.codeByEmail[email]
-//	if !ok {
-//		return false, nil
-//	}
-//	if time.Now().After(f.expireByEmail[email]) {
-//		return false, nil
-//	}
-//	return want == code, nil
-//}
-//func (f *fakeVerifyRepo) ConsumeGuestMagic(_ interface{}, token string) (string, bool, error) {
-//	email, ok := f.magicToEmail[token]
-//	if !ok {
-//		return "", false, nil
-//	}
-//	delete(f.magicToEmail, token)
-//	return email, true, nil
-//}
-//
-//// Minimal BookingRepo fake (in-memory)
-//type fakeBookingRepo struct {
-//	seq     int64
-//	byID    map[int64]*domain.Booking
-//	byToken map[string]int64
-//	byEmail map[string][]int64
-//}
-//
-//func newFakeBookingRepo() *fakeBookingRepo {
-//	return &fakeBookingRepo{
-//		seq:     0,
-//		byID:    map[int64]*domain.Booking{},
-//		byToken: map[string]int64{},
-//		byEmail: map[string][]int64{},
-//	}
-//}
-//
-//func (r *fakeBookingRepo) CreateGuest(_ interface{}, in *domain.BookingGuestReq) (*domain.Booking, error) {
-//	r.seq++
-//	id := r.seq
-//	tok := "tok-" + time.Now().Format("150405.000") + "-" + string(rune(id))
-//	b := &domain.Booking{
-//		ID:          id,
-//		ManageToken: tok,
-//		Status:      domain.BookingPending,
-//		RiderName:   in.RiderName,
-//		RiderEmail:  strings.ToLower(in.RiderEmail),
-//		RiderPhone:  in.RiderPhone,
-//		Pickup:      in.Pickup,
-//		Dropoff:     in.Dropoff,
-//		ScheduledAt: in.ScheduledAt,
-//		Notes:       in.Notes,
-//		Passengers:  in.Passengers,
-//		Luggages:    in.Luggages,
-//		RideType:    in.RideType,
-//		CreatedAt:   time.Now(),
-//		UpdatedAt:   time.Now(),
-//	}
-//	r.byID[id] = b
-//	r.byToken[tok] = id
-//	k := strings.ToLower(in.RiderEmail)
-//	r.byEmail[k] = append(r.byEmail[k], id)
-//	return b, nil
-//}
-//func (r *fakeBookingRepo) GetByIDWithToken(_ interface{}, id int64, token string) (*domain.Booking, error) {
-//	if rid, ok := r.byToken[token]; !ok || rid != id {
-//		return nil, nil
-//	}
-//	return r.byID[id], nil
-//}
-//func (r *fakeBookingRepo) CancelWithToken(_ interface{}, id int64, token string) (bool, error) {
-//	b, _ := r.GetByIDWithToken(nil, id, token)
-//	if b == nil {
-//		return false, nil
-//	}
-//	if b.Status == domain.BookingCanceled {
-//		return false, nil
-//	}
-//	b.Status = domain.BookingCanceled
-//	b.UpdatedAt = time.Now()
-//	return true, nil
-//}
-//func (r *fakeBookingRepo) List(_ interface{}, limit, offset int) ([]domain.Booking, error) {
-//	out := []domain.Booking{}
-//	for _, b := range r.byID {
-//		out = append(out, *b)
-//	}
-//	// simple slice
-//	if offset > len(out) {
-//		return []domain.Booking{}, nil
-//	}
-//	end := offset + limit
-//	if end > len(out) {
-//		end = len(out)
-//	}
-//	return out[offset:end], nil
-//}
-//func (r *fakeBookingRepo) ListByStatus(_ interface{}, st domain.BookingStatus, limit, offset int) ([]domain.Booking, error) {
-//	all, _ := r.List(nil, 1000, 0)
-//	out := []domain.Booking{}
-//	for _, b := range all {
-//		if b.Status == st {
-//			out = append(out, b)
-//		}
-//	}
-//	if offset > len(out) {
-//		return []domain.Booking{}, nil
-//	}
-//	end := offset + limit
-//	if end > len(out) {
-//		end = len(out)
-//	}
-//	return out[offset:end], nil
-//}
-//func (r *fakeBookingRepo) GetByID(_ interface{}, id int64) (*domain.Booking, error) {
-//	return r.byID[id], nil
-//}
-//func (r *fakeBookingRepo) ListByUserID(_ interface{}, _ int64, limit, offset int, _ *domain.BookingStatus) ([]domain.Booking, error) {
-//	return r.List(nil, limit, offset)
-//}
-//func (r *fakeBookingRepo) CreateForUser(ctx interface{}, userID int64, in *domain.BookingGuestReq) (*domain.Booking, error) {
-//	return r.CreateGuest(ctx, in)
-//}
-//func (r *fakeBookingRepo) UpdateGuest(_ interface{}, id int64, token string, p domain.GuestPatch) (*domain.Booking, error) {
-//	b, _ := r.GetByIDWithToken(nil, id, token)
-//	if b == nil {
-//		return nil, nil
-//	}
-//	if p.RiderName != nil {
-//		b.RiderName = *p.RiderName
-//	}
-//	if p.RiderPhone != nil {
-//		b.RiderPhone = *p.RiderPhone
-//	}
-//	if p.Pickup != nil {
-//		b.Pickup = *p.Pickup
-//	}
-//	if p.Dropoff != nil {
-//		b.Dropoff = *p.Dropoff
-//	}
-//	if p.ScheduledAt != nil {
-//		b.ScheduledAt = *p.ScheduledAt
-//	}
-//	if p.Notes != nil {
-//		b.Notes = *p.Notes
-//	}
-//	if p.Passengers != nil {
-//		b.Passengers = *p.Passengers
-//	}
-//	if p.Luggages != nil {
-//		b.Luggages = *p.Luggages
-//	}
-//	if p.RideType != nil {
-//		b.RideType = *p.RideType
-//	}
-//	b.UpdatedAt = time.Now()
-//	return b, nil
-//}
-//func (r *fakeBookingRepo) ListByEmail(_ interface{}, email string, limit, offset int, _ *domain.BookingStatus) ([]domain.Booking, error) {
-//	ids := r.byEmail[strings.ToLower(email)]
-//	out := []domain.Booking{}
-//	for _, id := range ids {
-//		out = append(out, *r.byID[id])
-//	}
-//	if offset > len(out) {
-//		return []domain.Booking{}, nil
-//	}
-//	end := offset + limit
-//	if end > len(out) {
-//		end = len(out)
-//	}
-//	return out[offset:end], nil
-////}
-//
-//
-//// ---------- helpers ----------
-//
-//func newGuestServer(t *testing.T) (*httptest.Server, *fakeBookingRepo, *fakeVerifyRepo, *fakeMailer) {
-//	t.Helper()
-//	bookRepo := newFakeBookingRepo()
-//	verRepo := newFakeVerifyRepo()
-//	m := &fakeMailer{}
-//
-//	access := guest.NewAccessHandler(verRepo, m)
-//	bookings := guest.NewBookingsHandler(bookRepo)
-//
-//	r := chi.NewRouter()
-//	r.Mount("/v1/guest/access", access.Routes())
-//	r.Mount("/v1/guest/bookings", bookings.Routes())
-//
-//	return httptest.NewServer(r), bookRepo, verRepo, m
-//}
-//
-//func authz(token string) http.Header {
-//	h := http.Header{}
-//	h.Set("Authorization", "Bearer "+token)
-//	return h
-//}
-//
-//// ---------- tests ----------
-//
-//func TestGuest_Create_And_Get_ByToken(t *testing.T) {
-//	srv, _, _, _ := newGuestServer(t)
-//	defer srv.Close()
-//
-//	when := time.Now().Add(2 * time.Hour).UTC().Format(time.RFC3339)
-//	body := `{
-//		"rider_name":"Guest One",
-//		"rider_email":"guest1@example.com",
-//		"rider_phone":"+15551234567",
-//		"pickup":"SFO","dropoff":"Downtown",
-//		"scheduled_at":"` + when + `",
-//		"notes":"2 bags",
-//		"passengers":2,"luggages":2,"ride_type":"per_ride"
-//	}`
-//
-//	req := httptest.NewRequest(http.MethodPost, srv.URL+"/v1/guest/bookings", bytes.NewBufferString(body))
-//	req.Header.Set("Content-Type", "application/json")
-//	res := httptest.NewRecorder()
-//	http.DefaultClient.Do(req) // no-op; use server directly below (we’re showing the intent)
-//	// we’ll just use http.Post for simplicity:
-//	resp, err := http.Post(srv.URL+"/v1/guest/bookings", "application/json", bytes.NewBufferString(body))
-//	if err != nil {
-//		t.Fatal(err)
-//	}
-//	defer resp.Body.Close()
-//	if resp.StatusCode != http.StatusCreated {
-//		t.Fatalf("expected 201, got %d", resp.StatusCode)
-//	}
-//	var out struct {
-//		ID          int64     `json:"id"`
-//		ManageToken string    `json:"manage_token"`
-//		Status      string    `json:"status"`
-//		ScheduledAt time.Time `json:"scheduled_at"`
-//	}
-//	_ = json.NewDecoder(resp.Body).Decode(&out)
-//	if out.ID == 0 || out.ManageToken == "" {
-//		t.Fatalf("missing id/token in response: %+v", out)
-//	}
-//
-//	// fetch by manage_token
-//	getURL := srv.URL + "/v1/guest/bookings/" + intToStr(out.ID) + "?manage_token=" + out.ManageToken
-//	res2, err := http.Get(getURL)
-//	if err != nil {
-//		t.Fatal(err)
-//	}
-//	defer res2.Body.Close()
-//	if res2.StatusCode != http.StatusOK {
-//		t.Fatalf("expected 200, got %d", res2.StatusCode)
-//	}
-//}
-//
-//func TestGuest_List_Unauthorized_Then_Authorized(t *testing.T) {
-//	srv, _, ver, mail := newGuestServer(t)
-//	defer srv.Close()
-//
-//	// Request access
-//	email := "guest2@example.com"
-//	reqBody := `{"email":"` + email + `"}`
-//	resp, err := http.Post(srv.URL+"/v1/guest/access/request", "application/json", bytes.NewBufferString(reqBody))
-//	if err != nil {
-//		t.Fatal(err)
-//	}
-//	resp.Body.Close()
-//	if resp.StatusCode != http.StatusOK {
-//		t.Fatalf("request access expected 200, got %d", resp.StatusCode)
-//	}
-//	if mail.lastTo != email || !strings.Contains(mail.lastBody, "http://") {
-//		t.Fatalf("mailer not invoked correctly: to=%s body=%q", mail.lastTo, mail.lastBody)
-//	}
-//
-//	// Verify with the code we stored (faked as “hash”)
-//	code := ver.codeByEmail[email]
-//	verifyBody := `{"email":"` + email + `","code":"` + code + `"}`
-//	resp2, err := http.Post(srv.URL+"/v1/guest/access/verify", "application/json", bytes.NewBufferString(verifyBody))
-//	if err != nil {
-//		t.Fatal(err)
-//	}
-//	defer resp2.Body.Close()
-//	if resp2.StatusCode != http.StatusOK {
-//		t.Fatalf("verify expected 200, got %d", resp2.StatusCode)
-//	}
-//	var vout struct {
-//		SessionToken string `json:"session_token"`
-//	}
-//	_ = json.NewDecoder(resp2.Body).Decode(&vout)
-//	if vout.SessionToken == "" {
-//		t.Fatalf("missing session_token")
-//	}
-//
-//	// List WITHOUT token -> 401
-//	reqNoAuth, _ := http.NewRequest(http.MethodGet, srv.URL+"/v1/guest/bookings?limit=10&offset=0", nil)
-//	resp3, _ := http.DefaultClient.Do(reqNoAuth)
-//	if resp3.StatusCode != http.StatusUnauthorized {
-//		t.Fatalf("expected 401 without token, got %d", resp3.StatusCode)
-//	}
-//	resp3.Body.Close()
-//
-//	// List WITH token -> 200 (even if empty list)
-//	reqAuth, _ := http.NewRequest(http.MethodGet, srv.URL+"/v1/guest/bookings?limit=10&offset=0", nil)
-//	reqAuth.Header = authz(vout.SessionToken)
-//	resp4, _ := http.DefaultClient.Do(reqAuth)
-//	defer resp4.Body.Close()
-//	if resp4.StatusCode != http.StatusOK {
-//		t.Fatalf("expected 200 with token, got %d", resp4.StatusCode)
-//	}
-//}
-//
-//func TestGuest_Patch_And_Cancel_ByToken(t *testing.T) {
-//	srv, repo, _, _ := newGuestServer(t)
-//	defer srv.Close()
-//
-//	// seed booking
-//	b, _ := repo.CreateGuest(nil, &domain.BookingGuestReq{
-//		RiderName:   "G",
-//		RiderEmail:  "g@example.com",
-//		RiderPhone:  "+1",
-//		Pickup:      "A",
-//		Dropoff:     "B",
-//		ScheduledAt: time.Now().Add(1 * time.Hour).UTC(),
-//		Notes:       "n",
-//		Passengers:  1,
-//		Luggages:    0,
-//		RideType:    domain.RidePerRide,
-//	})
-//
-//	// invalid passengers -> 400
-//	patchURL := srv.URL + "/v1/guest/bookings/" + intToStr(b.ID) + "?manage_token=" + b.ManageToken
-//	invalid := `{"passengers":0}`
-//	reqBad, _ := http.NewRequest(http.MethodPatch, patchURL, bytes.NewBufferString(invalid))
-//	reqBad.Header.Set("Content-Type", "application/json")
-//	respBad, _ := http.DefaultClient.Do(reqBad)
-//	defer respBad.Body.Close()
-//	if respBad.StatusCode != http.StatusBadRequest {
-//		t.Fatalf("expected 400, got %d", respBad.StatusCode)
-//	}
-//
-//	// valid notes update -> 200 and notes changed
-//	valid := `{"notes":"updated notes"}`
-//	reqOK, _ := http.NewRequest(http.MethodPatch, patchURL, bytes.NewBufferString(valid))
-//	reqOK.Header.Set("Content-Type", "application/json")
-//	respOK, _ := http.DefaultClient.Do(reqOK)
-//	defer respOK.Body.Close()
-//	if respOK.StatusCode != http.StatusOK {
-//		t.Fatalf("expected 200, got %d", respOK.StatusCode)
-//	}
-//	var bout domain.Booking
-//	_ = json.NewDecoder(respOK.Body).Decode(&bout)
-//	if bout.Notes != "updated notes" {
-//		t.Fatalf("notes not updated")
-//	}
-//
-//	// cancel -> 204
-//	reqDel, _ := http.NewRequest(http.MethodDelete, patchURL, nil)
-//	respDel, _ := http.DefaultClient.Do(reqDel)
-//	defer respDel.Body.Close()
-//	if respDel.StatusCode != http.StatusNoContent {
-//		t.Fatalf("expected 204, got %d", respDel.StatusCode)
-//	}
-//	if repo.byID[b.ID].Status != domain.BookingCanceled {
-//		t.Fatalf("booking not canceled")
-//	}
-//}
-//
-//func TestAccess_Magic_Link(t *testing.T) {
-//	srv, _, ver, mail := newGuestServer(t)
-//	defer srv.Close()
-//
-//	// Request
-//	email := "m@example.com"
-//	_ = httpPostJSON(t, srv.URL+"/v1/guest/access/request", map[string]string{"email": email}, http.StatusOK)
-//	if mail.lastTo != email {
-//		t.Fatalf("expected mail to %s", email)
-//	}
-//	// find magic token from fake store
-//	var magic string
-//	for tok, em := range ver.magicToEmail {
-//		if em == email {
-//			magic = tok
-//			break
-//		}
-//	}
-//	if magic == "" {
-//		t.Fatalf("magic token not stored")
-//	}
-//
-//	// Call magic endpoint
-//	resp := httpGet(t, srv.URL+"/v1/guest/access/magic?token="+magic, http.StatusOK)
-//	defer resp.Body.Close()
-//	var out struct{ SessionToken string }
-//	_ = json.NewDecoder(resp.Body).Decode(&out)
-//	if out.SessionToken == "" {
-//		t.Fatalf("missing session_token from magic")
-//	}
-//	// token is a JWT—quick sanity: parse claims
-//	if _, err := auth.Parse(out.SessionToken); err != nil {
-//		t.Fatalf("session_token not parseable: %v", err)
-//	}
-//}
-//
-//// ---------- tiny utilities ----------
-//
-//func intToStr(i int64) string { return strconvFormatInt(i, 10) }
-//
-//func strconvFormatInt(i int64, base int) string { return strconvItoa(int(i)) }
-//
-//func strconvItoa(i int) string {
-//	// simple no-import helper to keep the snippet self-contained
-//	// (you can replace with strconv.Itoa)
-//	sign := ""
-//	if i < 0 {
-//		sign = "-"
-//		i = -i
-//	}
-//	if i == 0 {
-//		return "0"
-//	}
-//	d := []byte{}
-//	for i > 0 {
-//		d = append([]byte{byte('0' + i%10)}, d...)
-//		i /= 10
-//	}
-//	return sign + string(d)
-//}
-//
-//func httpPostJSON(t *testing.T, url string, payload any, want int) *http.Response {
-//	t.Helper()
-//	buf, _ := json.Marshal(payload)
-//	resp, err := http.Post(url, "application/json", bytes.NewBuffer(buf))
-//	if err != nil {
-//		t.Fatalf("post %s: %v", url, err)
-//	}
-//	if resp.StatusCode != want {
-//		t.Fatalf("POST %s: want %d got %d", url, want, resp.StatusCode)
-//	}
-//	return resp
-//}
-//
-//func httpGet(t *testing.T, url string, want int) *http.Response {
-//	t.Helper()
-//	resp, err := http.Get(url)
-//	if err != nil {
-//		t.Fatalf("get %s: %v", url, err)
-//	}
-//	if resp.StatusCode != want {
-//		t.Fatalf("GET %s: want %d got %d", url, want, resp.StatusCode)
-//	}
-//	return resp
-//}
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"fmt"
+	"net"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/go-chi/chi/v5"
+
+	"github.com/diagnosis/luxsuv-bookings/internal/domain"
+	"github.com/diagnosis/luxsuv-bookings/internal/http/handlers/guest"
+	"github.com/diagnosis/luxsuv-bookings/internal/platform/auth"
+	"github.com/diagnosis/luxsuv-bookings/internal/repo/postgres"
+)
+
+// ---------- Mocks ----------
+
+type mockMailer struct {
+	lastTo   string
+	lastCode string
+	lastLink string
+	sendErr  error
+}
+
+func (m *mockMailer) Send(toEmail, toName, subject, text, html string) (string, error) {
+	m.lastTo = toEmail
+	return "mock-id", m.sendErr
+}
+
+func (m *mockMailer) SendGuestAccess(email, code, link string) error {
+	m.lastTo = email
+	m.lastCode = code
+	m.lastLink = link
+	return m.sendErr
+}
+
+type mockVerifyRepo struct {
+	codes          map[string]string // email -> code
+	magicTokens    map[string]string // token -> email
+	expirations    map[string]time.Time
+	checkCodeErr   error
+	createAccessErr error
+}
+
+func newMockVerifyRepo() *mockVerifyRepo {
+	return &mockVerifyRepo{
+		codes:       make(map[string]string),
+		magicTokens: make(map[string]string),
+		expirations: make(map[string]time.Time),
+	}
+}
+
+func (m *mockVerifyRepo) CreateGuestAccess(_ context.Context, email, codeHash, magic string, expires time.Time, _ net.IP) error {
+	if m.createAccessErr != nil {
+		return m.createAccessErr
+	}
+	// Store raw code for simplicity in tests
+	m.codes[email] = codeHash
+	m.magicTokens[magic] = email
+	m.expirations[email] = expires
+	return nil
+}
+
+func (m *mockVerifyRepo) CheckGuestCode(_ context.Context, email, code string) (bool, error) {
+	if m.checkCodeErr != nil {
+		return false, m.checkCodeErr
+	}
+	storedCode, exists := m.codes[email]
+	if !exists {
+		return false, nil
+	}
+	if time.Now().After(m.expirations[email]) {
+		return false, nil
+	}
+	return storedCode == code, nil
+}
+
+func (m *mockVerifyRepo) ConsumeGuestMagic(_ context.Context, token string) (string, bool, error) {
+	email, exists := m.magicTokens[token]
+	if !exists {
+		return "", false, nil
+	}
+	delete(m.magicTokens, token)
+	return email, true, nil
+}
+
+// Implement other interface methods as no-ops
+func (m *mockVerifyRepo) CreateEmailVerification(context.Context, int64, string, time.Time) error { return nil }
+func (m *mockVerifyRepo) ConsumeEmailVerification(context.Context, string) (int64, error) { return 0, nil }
+func (m *mockVerifyRepo) MarkUserVerified(context.Context, int64) error { return nil }
+func (m *mockVerifyRepo) IsUserVerified(context.Context, int64) (bool, error) { return false, nil }
+func (m *mockVerifyRepo) DeleteExpiredTokens(context.Context) (int64, error) { return 0, nil }
+
+type mockBookingRepo struct {
+	nextID   int64
+	bookings map[int64]*domain.Booking
+	tokens   map[string]int64 // manage_token -> booking_id
+	emails   map[string][]int64 // email -> []booking_ids
+}
+
+func newMockBookingRepo() *mockBookingRepo {
+	return &mockBookingRepo{
+		nextID:   1,
+		bookings: make(map[int64]*domain.Booking),
+		tokens:   make(map[string]int64),
+		emails:   make(map[string][]int64),
+	}
+}
+
+func (m *mockBookingRepo) CreateGuest(_ context.Context, req *domain.BookingGuestReq) (*domain.Booking, error) {
+	id := m.nextID
+	m.nextID++
+	
+	token := fmt.Sprintf("token-%d", id)
+	booking := &domain.Booking{
+		ID:          id,
+		ManageToken: token,
+		Status:      domain.BookingPending,
+		RiderName:   req.RiderName,
+		RiderEmail:  req.RiderEmail,
+		RiderPhone:  req.RiderPhone,
+		Pickup:      req.Pickup,
+		Dropoff:     req.Dropoff,
+		ScheduledAt: req.ScheduledAt,
+		Notes:       req.Notes,
+		Passengers:  req.Passengers,
+		Luggages:    req.Luggages,
+		RideType:    req.RideType,
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
+	}
+	
+	m.bookings[id] = booking
+	m.tokens[token] = id
+	
+	email := strings.ToLower(req.RiderEmail)
+	m.emails[email] = append(m.emails[email], id)
+	
+	return booking, nil
+}
+
+func (m *mockBookingRepo) GetByID(_ context.Context, id int64) (*domain.Booking, error) {
+	booking, exists := m.bookings[id]
+	if !exists {
+		return nil, nil
+	}
+	return booking, nil
+}
+
+func (m *mockBookingRepo) GetByIDWithToken(_ context.Context, id int64, token string) (*domain.Booking, error) {
+	bookingID, exists := m.tokens[token]
+	if !exists || bookingID != id {
+		return nil, nil
+	}
+	return m.bookings[id], nil
+}
+
+func (m *mockBookingRepo) ListByEmail(_ context.Context, email string, limit, offset int, status *domain.BookingStatus) ([]domain.Booking, error) {
+	email = strings.ToLower(email)
+	ids := m.emails[email]
+	
+	var result []domain.Booking
+	for _, id := range ids {
+		booking := m.bookings[id]
+		if status != nil && booking.Status != *status {
+			continue
+		}
+		result = append(result, *booking)
+	}
+	
+	// Apply pagination
+	if offset >= len(result) {
+		return []domain.Booking{}, nil
+	}
+	end := offset + limit
+	if end > len(result) {
+		end = len(result)
+	}
+	
+	return result[offset:end], nil
+}
+
+func (m *mockBookingRepo) UpdateGuest(_ context.Context, id int64, token string, patch domain.GuestPatch) (*domain.Booking, error) {
+	bookingID, exists := m.tokens[token]
+	if !exists || bookingID != id {
+		return nil, nil
+	}
+	
+	booking := m.bookings[id]
+	if patch.Notes != nil {
+		booking.Notes = *patch.Notes
+	}
+	if patch.Passengers != nil {
+		booking.Passengers = *patch.Passengers
+	}
+	booking.UpdatedAt = time.Now()
+	
+	return booking, nil
+}
+
+func (m *mockBookingRepo) CancelWithToken(_ context.Context, id int64, token string) (bool, error) {
+	bookingID, exists := m.tokens[token]
+	if !exists || bookingID != id {
+		return false, nil
+	}
+	
+	booking := m.bookings[id]
+	if booking.Status == domain.BookingCanceled {
+		return false, nil
+	}
+	
+	booking.Status = domain.BookingCanceled
+	booking.UpdatedAt = time.Now()
+	return true, nil
+}
+
+// Implement remaining interface methods as no-ops for testing
+func (m *mockBookingRepo) List(context.Context, int, int) ([]domain.Booking, error) { return nil, nil }
+func (m *mockBookingRepo) ListByStatus(context.Context, domain.BookingStatus, int, int) ([]domain.Booking, error) { return nil, nil }
+func (m *mockBookingRepo) ListByUserID(context.Context, int64, int, int, *domain.BookingStatus) ([]domain.Booking, error) { return nil, nil }
+func (m *mockBookingRepo) CreateForUser(context.Context, int64, *domain.BookingGuestReq) (*domain.Booking, error) { return nil, nil }
+
+type mockIdempotencyRepo struct {
+	records map[string]int64 // key_hash -> booking_id
+}
+
+func newMockIdempotencyRepo() *mockIdempotencyRepo {
+	return &mockIdempotencyRepo{
+		records: make(map[string]int64),
+	}
+}
+
+func (m *mockIdempotencyRepo) CheckOrCreateIdempotency(_ context.Context, key string, bookingID int64) (int64, error) {
+	// Simple hash for testing
+	keyHash := fmt.Sprintf("hash-%s", key)
+	
+	if existingBookingID, exists := m.records[keyHash]; exists {
+		return existingBookingID, nil
+	}
+	
+	if bookingID > 0 {
+		m.records[keyHash] = bookingID
+	}
+	
+	return 0, nil
+}
+
+func (m *mockIdempotencyRepo) CleanupExpired(context.Context) (int64, error) {
+	return 0, nil
+}
+
+// Mock Users Repository
+type mockUsersRepo struct {
+	users map[string]*postgres.User // email -> user
+}
+
+func newMockUsersRepo() *mockUsersRepo {
+	return &mockUsersRepo{
+		users: make(map[string]*postgres.User),
+	}
+}
+
+func (m *mockUsersRepo) Create(ctx context.Context, email, hash, name, phone string) (*postgres.User, error) {
+	user := &postgres.User{
+		ID: int64(len(m.users) + 1),
+		Email: email,
+		PasswordHash: hash,
+		Name: name,
+		Phone: phone,
+		Role: "rider",
+	}
+	m.users[email] = user
+	return user, nil
+}
+
+func (m *mockUsersRepo) FindByEmail(ctx context.Context, email string) (*postgres.User, error) {
+	if user, exists := m.users[email]; exists {
+		return user, nil
+	}
+	return nil, fmt.Errorf("user not found")
+}
+
+func (m *mockUsersRepo) FindByID(ctx context.Context, id int64) (*postgres.User, error) {
+	for _, user := range m.users {
+		if user.ID == id {
+			return user, nil
+		}
+	}
+	return nil, fmt.Errorf("user not found")
+}
+
+func (m *mockUsersRepo) LinkExistingBookings(ctx context.Context, userID int64, email string) error {
+	return nil
+}
+
+// ---------- Test Setup ----------
+
+func setupTestServer() (*httptest.Server, *mockBookingRepo, *mockVerifyRepo, *mockMailer, *mockIdempotencyRepo) {
+	bookingRepo := newMockBookingRepo()
+	verifyRepo := newMockVerifyRepo()
+	mailer := &mockMailer{}
+	idempotencyRepo := newMockIdempotencyRepo()
+	usersRepo := newMockUsersRepo()
+	
+	accessHandler := guest.NewAccessHandler(verifyRepo, mailer, usersRepo)
+	bookingsHandler := guest.NewBookingsHandler(bookingRepo, idempotencyRepo, usersRepo)
+	
+	r := chi.NewRouter()
+	r.Mount("/v1/guest/access", accessHandler.Routes())
+	r.Mount("/v1/guest/bookings", bookingsHandler.Routes())
+	
+	return httptest.NewServer(r), bookingRepo, verifyRepo, mailer, idempotencyRepo
+}
+
+// ---------- Tests ----------
+
+func TestGuestAccess_RequestAndVerify_Success(t *testing.T) {
+	server, _, verifyRepo, mailer, _ := setupTestServer()
+	defer server.Close()
+	
+	email := "test@example.com"
+	
+	// Test access request
+	requestBody := map[string]string{"email": email}
+	resp := postJSON(t, server.URL+"/v1/guest/access/request", requestBody, http.StatusOK)
+	
+	var requestResult map[string]string
+	json.NewDecoder(resp.Body).Decode(&requestResult)
+	resp.Body.Close()
+	
+	if requestResult["message"] == "" {
+		t.Fatal("Expected success message")
+	}
+	
+	if mailer.lastTo != email {
+		t.Fatalf("Expected email to %s, got %s", email, mailer.lastTo)
+	}
+	
+	// Get the code from our mock (in real implementation it would be from email)
+	code := verifyRepo.codes[email]
+	if code == "" {
+		t.Fatal("No code stored")
+	}
+	
+	// Test code verification
+	verifyBody := map[string]string{"email": email, "code": code}
+	verifyResp := postJSON(t, server.URL+"/v1/guest/access/verify", verifyBody, http.StatusOK)
+	
+	var verifyResult map[string]interface{}
+	json.NewDecoder(verifyResp.Body).Decode(&verifyResult)
+	verifyResp.Body.Close()
+	
+	token, ok := verifyResult["session_token"].(string)
+	if !ok || token == "" {
+		t.Fatal("Expected session_token in response")
+	}
+	
+	// Verify the JWT is valid
+	claims, err := auth.Parse(token)
+	if err != nil {
+		t.Fatalf("Failed to parse JWT: %v", err)
+	}
+	
+	if claims.Email != email || claims.Role != "guest" {
+		t.Fatalf("Invalid claims: email=%s, role=%s", claims.Email, claims.Role)
+	}
+}
+
+func TestGuestAccess_InvalidEmail_BadRequest(t *testing.T) {
+	server, _, _, _, _ := setupTestServer()
+	defer server.Close()
+	
+	tests := []struct {
+		name  string
+		email string
+	}{
+		{"empty email", ""},
+		{"invalid email", "not-an-email"},
+		{"missing @", "testemailcom"},
+	}
+	
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			requestBody := map[string]string{"email": tt.email}
+			postJSON(t, server.URL+"/v1/guest/access/request", requestBody, http.StatusBadRequest)
+		})
+	}
+}
+
+func TestGuestBookings_CreateAndGet_Success(t *testing.T) {
+	server, _, _, _, _ := setupTestServer()
+	defer server.Close()
+	
+	// Create booking
+	futureTime := time.Now().Add(2 * time.Hour)
+	booking := map[string]interface{}{
+		"rider_name":   "John Doe",
+		"rider_email":  "john@example.com",
+		"rider_phone":  "+1234567890",
+		"pickup":       "Airport",
+		"dropoff":      "Hotel",
+		"scheduled_at": futureTime.Format(time.RFC3339),
+		"notes":        "Two bags",
+		"passengers":   2,
+		"luggages":     2,
+		"ride_type":    "per_ride",
+	}
+	
+	createResp := postJSON(t, server.URL+"/v1/guest/bookings", booking, http.StatusCreated)
+	
+	var createResult domain.BookingGuestRes
+	json.NewDecoder(createResp.Body).Decode(&createResult)
+	createResp.Body.Close()
+	
+	if createResult.ID == 0 || createResult.ManageToken == "" {
+		t.Fatal("Expected booking ID and manage token")
+	}
+	
+	// Get booking by manage token
+	getURL := fmt.Sprintf("%s/v1/guest/bookings/%d?manage_token=%s", 
+		server.URL, createResult.ID, createResult.ManageToken)
+	
+	getResp := get(t, getURL, http.StatusOK)
+	
+	var getResult domain.Booking
+	json.NewDecoder(getResp.Body).Decode(&getResult)
+	getResp.Body.Close()
+	
+	if getResult.ID != createResult.ID {
+		t.Fatalf("Expected booking ID %d, got %d", createResult.ID, getResult.ID)
+	}
+	
+	if getResult.RiderName != "John Doe" {
+		t.Fatalf("Expected rider name 'John Doe', got '%s'", getResult.RiderName)
+	}
+}
+
+func TestGuestBookings_CreateWithIdempotency_ReturnsExisting(t *testing.T) {
+	server, _, _, _, _ := setupTestServer()
+	defer server.Close()
+	
+	idempotencyKey := "test-key-123"
+	futureTime := time.Now().Add(2 * time.Hour)
+	
+	booking := map[string]interface{}{
+		"rider_name":   "Jane Doe",
+		"rider_email":  "jane@example.com", 
+		"rider_phone":  "+1234567890",
+		"pickup":       "Home",
+		"dropoff":      "Office",
+		"scheduled_at": futureTime.Format(time.RFC3339),
+		"passengers":   1,
+		"luggages":     0,
+		"ride_type":    "per_ride",
+	}
+	
+	// First request with idempotency key
+	req1, _ := http.NewRequest("POST", server.URL+"/v1/guest/bookings", 
+		bytes.NewBuffer(jsonBytes(booking)))
+	req1.Header.Set("Content-Type", "application/json")
+	req1.Header.Set("Idempotency-Key", idempotencyKey)
+	
+	resp1, err := http.DefaultClient.Do(req1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp1.Body.Close()
+	
+	if resp1.StatusCode != http.StatusCreated {
+		t.Fatalf("Expected 201, got %d", resp1.StatusCode)
+	}
+	
+	var result1 domain.BookingGuestRes
+	json.NewDecoder(resp1.Body).Decode(&result1)
+	
+	// Second request with same idempotency key
+	req2, _ := http.NewRequest("POST", server.URL+"/v1/guest/bookings", 
+		bytes.NewBuffer(jsonBytes(booking)))
+	req2.Header.Set("Content-Type", "application/json") 
+	req2.Header.Set("Idempotency-Key", idempotencyKey)
+	
+	resp2, err := http.DefaultClient.Do(req2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp2.Body.Close()
+	
+	if resp2.StatusCode != http.StatusOK {
+		t.Fatalf("Expected 200 for idempotent request, got %d", resp2.StatusCode)
+	}
+	
+	var result2 domain.BookingGuestRes
+	json.NewDecoder(resp2.Body).Decode(&result2)
+	
+	if result1.ID != result2.ID {
+		t.Fatalf("Expected same booking ID for idempotent requests: %d vs %d", 
+			result1.ID, result2.ID)
+	}
+}
+
+func TestGuestBookings_InvalidInput_BadRequest(t *testing.T) {
+	server, _, _, _, _ := setupTestServer()
+	defer server.Close()
+	
+	tests := []struct {
+		name    string
+		booking map[string]interface{}
+	}{
+		{
+			"missing rider_name",
+			map[string]interface{}{
+				"rider_email": "test@example.com",
+				"rider_phone": "+1234567890", 
+				"pickup": "A", "dropoff": "B",
+				"scheduled_at": time.Now().Add(time.Hour).Format(time.RFC3339),
+				"passengers": 1, "luggages": 0, "ride_type": "per_ride",
+			},
+		},
+		{
+			"invalid email",
+			map[string]interface{}{
+				"rider_name": "Test", "rider_email": "invalid-email",
+				"rider_phone": "+1234567890",
+				"pickup": "A", "dropoff": "B",
+				"scheduled_at": time.Now().Add(time.Hour).Format(time.RFC3339),
+				"passengers": 1, "luggages": 0, "ride_type": "per_ride",
+			},
+		},
+		{
+			"past scheduled_at",
+			map[string]interface{}{
+				"rider_name": "Test", "rider_email": "test@example.com",
+				"rider_phone": "+1234567890",
+				"pickup": "A", "dropoff": "B",
+				"scheduled_at": time.Now().Add(-time.Hour).Format(time.RFC3339),
+				"passengers": 1, "luggages": 0, "ride_type": "per_ride",
+			},
+		},
+		{
+			"invalid passengers",
+			map[string]interface{}{
+				"rider_name": "Test", "rider_email": "test@example.com",
+				"rider_phone": "+1234567890",
+				"pickup": "A", "dropoff": "B", 
+				"scheduled_at": time.Now().Add(time.Hour).Format(time.RFC3339),
+				"passengers": 0, "luggages": 0, "ride_type": "per_ride",
+			},
+		},
+	}
+	
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			postJSON(t, server.URL+"/v1/guest/bookings", tt.booking, http.StatusBadRequest)
+		})
+	}
+}
+
+func TestGuestBookings_SessionBasedAccess_RequiresAuth(t *testing.T) {
+	server, bookingRepo, _, _, _ := setupTestServer()
+	defer server.Close()
+	
+	// Create a booking directly in repo
+	futureTime := time.Now().Add(2 * time.Hour)
+	booking, _ := bookingRepo.CreateGuest(context.Background(), &domain.BookingGuestReq{
+		RiderName: "Test User", RiderEmail: "test@example.com", RiderPhone: "+1234567890",
+		Pickup: "A", Dropoff: "B", ScheduledAt: futureTime,
+		Passengers: 1, Luggages: 0, RideType: domain.RidePerRide,
+	})
+	
+	// Try to list bookings without session - should fail
+	listURL := server.URL + "/v1/guest/bookings"
+	get(t, listURL, http.StatusUnauthorized)
+	
+	// Try to get booking by ID without token or session - should fail  
+	getURL := fmt.Sprintf("%s/v1/guest/bookings/%d", server.URL, booking.ID)
+	get(t, getURL, http.StatusUnauthorized)
+	
+	// Create valid guest session
+	token, _ := auth.NewGuestSession("test@example.com", 30*time.Minute)
+	
+	// List with valid session - should work
+	req, _ := http.NewRequest("GET", listURL, nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("Expected 200 with valid session, got %d", resp.StatusCode)
+	}
+	
+	var bookings []domain.BookingDTO
+	json.NewDecoder(resp.Body).Decode(&bookings)
+	
+	if len(bookings) != 1 {
+		t.Fatalf("Expected 1 booking, got %d", len(bookings))
+	}
+}
+
+// ---------- Helper Functions ----------
+
+func postJSON(t *testing.T, url string, data interface{}, expectedStatus int) *http.Response {
+	t.Helper()
+	
+	body := jsonBytes(data)
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
+	if err != nil {
+		t.Fatalf("POST %s failed: %v", url, err)
+	}
+	
+	if resp.StatusCode != expectedStatus {
+		t.Fatalf("POST %s: expected status %d, got %d", url, expectedStatus, resp.StatusCode)
+	}
+	
+	return resp
+}
+
+func get(t *testing.T, url string, expectedStatus int) *http.Response {
+	t.Helper()
+	
+	resp, err := http.Get(url)
+	if err != nil {
+		t.Fatalf("GET %s failed: %v", url, err)
+	}
+	
+	if resp.StatusCode != expectedStatus {
+		t.Fatalf("GET %s: expected status %d, got %d", url, expectedStatus, resp.StatusCode)
+	}
+	
+	return resp
+}
+
+func jsonBytes(data interface{}) []byte {
+	b, _ := json.Marshal(data)
+	return b
+}
