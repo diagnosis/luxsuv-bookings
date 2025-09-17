@@ -1,20 +1,225 @@
-version: "3.9"
+version: '3.8'
+
 services:
-  db:
+  # Infrastructure
+  postgres:
     image: postgres:17
-    container_name: luxsuv_db
+    container_name: luxsuv_postgres
     restart: always
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: luxsuv-co
-    ports: ["5432:5432"]
+      POSTGRES_DB: luxsuv
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d luxsuv"]
-      interval: 3s
-      timeout: 3s
-      retries: 10
-    volumes:
-      - db_data:/var/lib/postgresql/data
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: luxsuv_redis
+    restart: always
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  nats:
+    image: nats:2.10-alpine
+    container_name: luxsuv_nats
+    restart: always
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+    command: ["-js", "-m", "8222"]
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8222/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: luxsuv_mailpit
+    restart: always
+    ports:
+      - "1025:1025"  # SMTP
+      - "8025:8025"  # Web UI
+    environment:
+      MP_SMTP_AUTH_ACCEPT_ANY: 1
+      MP_SMTP_AUTH_ALLOW_INSECURE: 1
+
+  # Services
+  gateway:
+    build:
+      context: .
+      dockerfile: services/gateway/Dockerfile
+    container_name: luxsuv_gateway
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      PORT: 8080
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/luxsuv?sslmode=disable
+      REDIS_URL: redis://redis:6379
+      NATS_URL: nats://nats:4222
+      JWT_SECRET: dev-secret-change-in-production
+      LOG_LEVEL: debug
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+      auth-svc:
+        condition: service_started
+      bookings-svc:
+        condition: service_started
+      dispatch-svc:
+        condition: service_started
+      driver-svc:
+        condition: service_started
+      payments-svc:
+        condition: service_started
+
+  auth-svc:
+    build:
+      context: .
+      dockerfile: services/auth/Dockerfile
+    container_name: luxsuv_auth
+    restart: always
+    ports:
+      - "8081:8081"
+    environment:
+      PORT: 8081
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/luxsuv?sslmode=disable
+      NATS_URL: nats://nats:4222
+      JWT_SECRET: dev-secret-change-in-production
+      SMTP_HOST: mailpit
+      SMTP_PORT: 1025
+      SMTP_FROM: noreply@luxsuv.local
+      EMAIL_DEV_MODE: true
+      LOG_LEVEL: debug
+    depends_on:
+      postgres:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+
+  bookings-svc:
+    build:
+      context: .
+      dockerfile: services/bookings/Dockerfile
+    container_name: luxsuv_bookings
+    restart: always
+    ports:
+      - "8082:8082"
+    environment:
+      PORT: 8082
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/luxsuv?sslmode=disable
+      NATS_URL: nats://nats:4222
+      JWT_SECRET: dev-secret-change-in-production
+      LOG_LEVEL: debug
+    depends_on:
+      postgres:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+
+  dispatch-svc:
+    build:
+      context: .
+      dockerfile: services/dispatch/Dockerfile
+    container_name: luxsuv_dispatch
+    restart: always
+    ports:
+      - "8083:8083"
+    environment:
+      PORT: 8083
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/luxsuv?sslmode=disable
+      NATS_URL: nats://nats:4222
+      JWT_SECRET: dev-secret-change-in-production
+      LOG_LEVEL: debug
+    depends_on:
+      postgres:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+
+  driver-svc:
+    build:
+      context: .
+      dockerfile: services/driver/Dockerfile
+    container_name: luxsuv_driver
+    restart: always
+    ports:
+      - "8084:8084"
+    environment:
+      PORT: 8084
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/luxsuv?sslmode=disable
+      NATS_URL: nats://nats:4222
+      JWT_SECRET: dev-secret-change-in-production
+      LOG_LEVEL: debug
+    depends_on:
+      postgres:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+
+  payments-svc:
+    build:
+      context: .
+      dockerfile: services/payments/Dockerfile
+    container_name: luxsuv_payments
+    restart: always
+    ports:
+      - "8085:8085"
+    environment:
+      PORT: 8085
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/luxsuv?sslmode=disable
+      NATS_URL: nats://nats:4222
+      STRIPE_SECRET_KEY: sk_test_your_stripe_secret_key
+      STRIPE_WEBHOOK_SECRET: whsec_your_webhook_secret
+      STRIPE_ENV: sandbox
+      LOG_LEVEL: debug
+    depends_on:
+      postgres:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+
+  notify-svc:
+    build:
+      context: .
+      dockerfile: services/notify/Dockerfile
+    container_name: luxsuv_notify
+    restart: always
+    ports:
+      - "8086:8086"
+    environment:
+      PORT: 8086
+      NATS_URL: nats://nats:4222
+      SMTP_HOST: mailpit
+      SMTP_PORT: 1025
+      SMTP_FROM: noreply@luxsuv.local
+      EMAIL_DEV_MODE: true
+      LOG_LEVEL: debug
+    depends_on:
+      nats:
+        condition: service_healthy
+
 volumes:
-  db_data:
+  postgres_data:
+
+networks:
+  default:
+    name: luxsuv_network

@@ -1,0 +1,76 @@
+{
+  "dispatch.assign.requested": {
+    "description": "Published when dispatch requests driver assignment",
+    "schema": {
+      "type": "object",
+      "properties": {
+        "booking_id": {"type": "integer"},
+        "driver_id": {"type": "integer"}
+      },
+      "required": ["booking_id", "driver_id"]
+    },
+    "example": {
+      "booking_id": 123,
+      "driver_id": 456
+    }
+  },
+  "dispatch.assigned": {
+    "description": "Published when a booking is assigned to a driver",
+    "schema": {
+      "type": "object",
+      "properties": {
+        "booking_id": {"type": "integer"},
+        "driver_id": {"type": "integer"},
+        "assigned_at": {"type": "string", "format": "date-time"},
+        "expires_at": {"type": "string", "format": "date-time"}
+      },
+      "required": ["booking_id", "driver_id", "assigned_at", "expires_at"]
+    },
+    "example": {
+      "booking_id": 123,
+      "driver_id": 456,
+      "assigned_at": "2025-01-19T10:30:00Z",
+      "expires_at": "2025-01-19T10:35:00Z"
+    }
+  },
+  "dispatch.reassigned": {
+    "description": "Published when a booking is reassigned to a different driver",
+    "schema": {
+      "type": "object",
+      "properties": {
+        "booking_id": {"type": "integer"},
+        "old_driver_id": {"type": "integer"},
+        "new_driver_id": {"type": "integer"},
+        "reason": {"type": "string"},
+        "reassigned_at": {"type": "string", "format": "date-time"}
+      },
+      "required": ["booking_id", "old_driver_id", "new_driver_id", "reason", "reassigned_at"]
+    },
+    "example": {
+      "booking_id": 123,
+      "old_driver_id": 456,
+      "new_driver_id": 789,
+      "reason": "driver_declined",
+      "reassigned_at": "2025-01-19T10:40:00Z"
+    }
+  },
+  "dispatch.declined": {
+    "description": "Published when a driver declines an assignment",
+    "schema": {
+      "type": "object",
+      "properties": {
+        "booking_id": {"type": "integer"},
+        "driver_id": {"type": "integer"},
+        "declined_at": {"type": "string", "format": "date-time"},
+        "reason": {"type": "string"}
+      },
+      "required": ["booking_id", "driver_id", "declined_at"]
+    },
+    "example": {
+      "booking_id": 123,
+      "driver_id": 456,
+      "declined_at": "2025-01-19T10:35:00Z",
+      "reason": "too_far"
+    }
+  }
+}

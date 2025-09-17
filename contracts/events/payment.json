@@ -1,0 +1,84 @@
+{
+  "payment.intent.created": {
+    "description": "Published when a payment intent is created",
+    "schema": {
+      "type": "object",
+      "properties": {
+        "booking_id": {"type": "integer"},
+        "intent_id": {"type": "string"},
+        "amount": {"type": "integer"},
+        "currency": {"type": "string"},
+        "client_secret": {"type": "string"}
+      },
+      "required": ["booking_id", "intent_id", "amount", "currency", "client_secret"]
+    },
+    "example": {
+      "booking_id": 123,
+      "intent_id": "pi_1234567890",
+      "amount": 5000,
+      "currency": "usd",
+      "client_secret": "pi_1234567890_secret_abc123"
+    }
+  },
+  "payment.captured": {
+    "description": "Published when a payment is captured",
+    "schema": {
+      "type": "object",
+      "properties": {
+        "booking_id": {"type": "integer"},
+        "intent_id": {"type": "string"},
+        "amount": {"type": "integer"},
+        "captured_at": {"type": "string", "format": "date-time"}
+      },
+      "required": ["booking_id", "intent_id", "amount", "captured_at"]
+    },
+    "example": {
+      "booking_id": 123,
+      "intent_id": "pi_1234567890",
+      "amount": 5000,
+      "captured_at": "2025-01-20T16:20:00Z"
+    }
+  },
+  "payment.refunded": {
+    "description": "Published when a payment is refunded",
+    "schema": {
+      "type": "object",
+      "properties": {
+        "booking_id": {"type": "integer"},
+        "intent_id": {"type": "string"},
+        "amount": {"type": "integer"},
+        "refunded_at": {"type": "string", "format": "date-time"},
+        "reason": {"type": "string"}
+      },
+      "required": ["booking_id", "intent_id", "amount", "refunded_at", "reason"]
+    },
+    "example": {
+      "booking_id": 123,
+      "intent_id": "pi_1234567890",
+      "amount": 5000,
+      "refunded_at": "2025-01-19T14:00:00Z",
+      "reason": "booking_canceled"
+    }
+  },
+  "payment.failed": {
+    "description": "Published when a payment fails",
+    "schema": {
+      "type": "object",
+      "properties": {
+        "booking_id": {"type": "integer"},
+        "intent_id": {"type": "string"},
+        "error_code": {"type": "string"},
+        "error_message": {"type": "string"},
+        "failed_at": {"type": "string", "format": "date-time"}
+      },
+      "required": ["booking_id", "intent_id", "error_code", "error_message", "failed_at"]
+    },
+    "example": {
+      "booking_id": 123,
+      "intent_id": "pi_1234567890",
+      "error_code": "card_declined",
+      "error_message": "Your card was declined.",
+      "failed_at": "2025-01-20T15:25:00Z"
+    }
+  }
+}

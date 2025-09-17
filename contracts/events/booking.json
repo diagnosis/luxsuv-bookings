@@ -1,0 +1,67 @@
+{
+  "booking.created": {
+    "description": "Published when a new booking is created",
+    "schema": {
+      "type": "object",
+      "properties": {
+        "booking_id": {"type": "integer"},
+        "rider_email": {"type": "string"},
+        "rider_name": {"type": "string"},
+        "pickup": {"type": "string"},
+        "dropoff": {"type": "string"},
+        "scheduled_at": {"type": "string", "format": "date-time"},
+        "passengers": {"type": "integer"},
+        "created_at": {"type": "string", "format": "date-time"}
+      },
+      "required": ["booking_id", "rider_email", "rider_name", "pickup", "dropoff", "scheduled_at", "passengers", "created_at"]
+    },
+    "example": {
+      "booking_id": 123,
+      "rider_email": "john@example.com",
+      "rider_name": "John Doe",
+      "pickup": "SFO Terminal 1",
+      "dropoff": "Downtown Hotel",
+      "scheduled_at": "2025-01-20T15:30:00Z",
+      "passengers": 2,
+      "created_at": "2025-01-19T10:00:00Z"
+    }
+  },
+  "booking.updated": {
+    "description": "Published when a booking is modified",
+    "schema": {
+      "type": "object",
+      "properties": {
+        "booking_id": {"type": "integer"},
+        "rider_email": {"type": "string"},
+        "changes": {"type": "array", "items": {"type": "string"}},
+        "updated_at": {"type": "string", "format": "date-time"}
+      },
+      "required": ["booking_id", "rider_email", "changes", "updated_at"]
+    },
+    "example": {
+      "booking_id": 123,
+      "rider_email": "john@example.com",
+      "changes": ["pickup", "scheduled_at"],
+      "updated_at": "2025-01-19T11:00:00Z"
+    }
+  },
+  "booking.canceled": {
+    "description": "Published when a booking is canceled",
+    "schema": {
+      "type": "object",
+      "properties": {
+        "booking_id": {"type": "integer"},
+        "rider_email": {"type": "string"},
+        "reason": {"type": "string"},
+        "canceled_at": {"type": "string", "format": "date-time"}
+      },
+      "required": ["booking_id", "rider_email", "reason", "canceled_at"]
+    },
+    "example": {
+      "booking_id": 123,
+      "rider_email": "john@example.com",
+      "reason": "user_requested",
+      "canceled_at": "2025-01-19T12:00:00Z"
+    }
+  }
+}

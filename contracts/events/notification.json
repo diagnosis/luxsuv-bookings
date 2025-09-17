@@ -1,0 +1,58 @@
+{
+  "notify.send": {
+    "description": "Published to trigger sending notifications",
+    "schema": {
+      "type": "object",
+      "properties": {
+        "type": {"type": "string", "enum": ["email", "webhook", "sms"]},
+        "recipient": {"type": "string"},
+        "subject": {"type": "string"},
+        "template": {"type": "string"},
+        "data": {"type": "object"}
+      },
+      "required": ["type", "recipient", "template", "data"]
+    },
+    "examples": {
+      "booking_created_guest": {
+        "type": "email",
+        "recipient": "john@example.com",
+        "subject": "Booking Confirmation - LuxSUV",
+        "template": "booking_created_guest",
+        "data": {
+          "booking_id": 123,
+          "rider_name": "John Doe",
+          "pickup": "SFO Terminal 1",
+          "dropoff": "Downtown Hotel",
+          "scheduled_at": "2025-01-20T15:30:00Z",
+          "manage_token": "abc123def456"
+        }
+      },
+      "driver_assignment": {
+        "type": "email",
+        "recipient": "driver@example.com",
+        "subject": "New Trip Assignment - LuxSUV",
+        "template": "driver_assignment",
+        "data": {
+          "booking_id": 123,
+          "pickup": "SFO Terminal 1",
+          "dropoff": "Downtown Hotel",
+          "scheduled_at": "2025-01-20T15:30:00Z",
+          "passenger_count": 2,
+          "expires_at": "2025-01-19T10:35:00Z"
+        }
+      },
+      "trip_completed": {
+        "type": "email",
+        "recipient": "john@example.com",
+        "subject": "Trip Completed - LuxSUV",
+        "template": "trip_completed_rider",
+        "data": {
+          "booking_id": 123,
+          "driver_name": "Mike Smith",
+          "completed_at": "2025-01-20T16:15:00Z",
+          "total_amount": "$50.00"
+        }
+      }
+    }
+  }
+}

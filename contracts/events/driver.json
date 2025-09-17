@@ -1,0 +1,72 @@
+{
+  "driver.accepted": {
+    "description": "Published when a driver accepts an assignment",
+    "schema": {
+      "type": "object",
+      "properties": {
+        "booking_id": {"type": "integer"},
+        "driver_id": {"type": "integer"},
+        "accepted_at": {"type": "string", "format": "date-time"}
+      },
+      "required": ["booking_id", "driver_id", "accepted_at"]
+    },
+    "example": {
+      "booking_id": 123,
+      "driver_id": 456,
+      "accepted_at": "2025-01-19T10:32:00Z"
+    }
+  },
+  "driver.declined": {
+    "description": "Published when a driver declines an assignment",
+    "schema": {
+      "type": "object",
+      "properties": {
+        "booking_id": {"type": "integer"},
+        "driver_id": {"type": "integer"},
+        "declined_at": {"type": "string", "format": "date-time"},
+        "reason": {"type": "string"}
+      },
+      "required": ["booking_id", "driver_id", "declined_at"]
+    },
+    "example": {
+      "booking_id": 123,
+      "driver_id": 456,
+      "declined_at": "2025-01-19T10:35:00Z",
+      "reason": "unavailable"
+    }
+  },
+  "trip.started": {
+    "description": "Published when a driver starts a trip",
+    "schema": {
+      "type": "object",
+      "properties": {
+        "booking_id": {"type": "integer"},
+        "driver_id": {"type": "integer"},
+        "started_at": {"type": "string", "format": "date-time"}
+      },
+      "required": ["booking_id", "driver_id", "started_at"]
+    },
+    "example": {
+      "booking_id": 123,
+      "driver_id": 456,
+      "started_at": "2025-01-20T15:30:00Z"
+    }
+  },
+  "trip.completed": {
+    "description": "Published when a driver completes a trip",
+    "schema": {
+      "type": "object",
+      "properties": {
+        "booking_id": {"type": "integer"},
+        "driver_id": {"type": "integer"},
+        "completed_at": {"type": "string", "format": "date-time"}
+      },
+      "required": ["booking_id", "driver_id", "completed_at"]
+    },
+    "example": {
+      "booking_id": 123,
+      "driver_id": 456,
+      "completed_at": "2025-01-20T16:15:00Z"
+    }
+  }
+}
