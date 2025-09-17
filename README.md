@@ -775,3 +775,2408 @@ Technical Issues: Create an issue in the repository
 Business Inquiries: Contact the development team
 Security Issues: Report privately to security@luxsuv.com
 Built with ❤️ by the LuxSuv development team.
+
+---
+
+# 🌟 Frontend Implementation Guide
+
+This section provides a comprehensive guide for implementing the React frontend for the LuxSuv booking platform.
+
+## 🎯 Frontend Overview
+
+The frontend is a modern React application that interfaces with the microservices backend through the API Gateway. It supports both guest (passwordless) bookings and authenticated user accounts.
+
+### Key Features
+- **Passwordless Guest Flow**: Create bookings without registration
+- **User Authentication**: Traditional login/register with email verification
+- **Real-time Updates**: Optimistic UI updates with server synchronization
+- **Responsive Design**: Mobile-first approach with desktop optimization
+- **Type Safety**: Full TypeScript coverage from API to components
+- **Accessibility**: WCAG 2.1 compliant interface
+- **PWA Ready**: Service worker support for offline functionality
+
+## 🏗️ Frontend Architecture
+
+### Tech Stack
+```json
+{
+  "framework": "React 18 with TypeScript",
+  "build_tool": "Vite for fast development",
+  "routing": "TanStack Router (file-based)",
+  "state_management": {
+    "server_state": "TanStack Query (React Query)",
+    "client_state": "Zustand stores",
+    "form_state": "React Hook Form + Zod"
+  },
+  "styling": {
+    "framework": "Tailwind CSS",
+    "components": "Headless UI + Custom Design System",
+    "icons": "Lucide React"
+  },
+  "validation": "Zod schemas",
+  "testing": {
+    "unit": "Vitest + Testing Library",
+    "e2e": "Playwright",
+    "type_checking": "TypeScript"
+  }
+}
+```
+
+### Project Structure
+```
+frontend/
+├── public/                     # Static assets
+│   ├── icons/                 # App icons and favicons
+│   └── images/               # Static images
+├── src/
+│   ├── components/            # Reusable UI components
+│   │   ├── ui/               # Base design system components
+│   │   │   ├── Button.tsx
+│   │   │   ├── Input.tsx
+│   │   │   ├── Modal.tsx
+│   │   │   └── Toast.tsx
+│   │   ├── forms/            # Form-specific components
+│   │   │   ├── BookingForm.tsx
+│   │   │   ├── LoginForm.tsx
+│   │   │   └── RegisterForm.tsx
+│   │   ├── layouts/          # Layout components
+│   │   │   ├── AppLayout.tsx
+│   │   │   ├── AuthLayout.tsx
+│   │   │   └── GuestLayout.tsx
+│   │   └── features/         # Feature-specific components
+│   │       ├── booking/      # Booking-related components
+│   │       ├── auth/         # Authentication components
+│   │       └── dashboard/    # Dashboard components
+│   ├── hooks/                # Custom React hooks
+│   │   ├── api/              # API-specific hooks
+│   │   │   ├── useAuth.ts
+│   │   │   ├── useBookings.ts
+│   │   │   └── useGuestAccess.ts
+│   │   ├── ui/               # UI-specific hooks
+│   │   │   ├── useToast.ts
+│   │   │   └── useLocalStorage.ts
+│   │   └── business/         # Business logic hooks
+│   │       ├── useBookingValidation.ts
+│   │       └── useGuestSession.ts
+│   ├── lib/                  # Utilities and configurations
+│   │   ├── api/              # API client setup
+│   │   │   ├── client.ts     # Base API client
+│   │   │   ├── auth.ts       # Auth API methods
+│   │   │   ├── bookings.ts   # Bookings API methods
+│   │   │   └── types.ts      # API response types
+│   │   ├── auth/             # Authentication utilities
+│   │   │   ├── session.ts    # Session management
+│   │   │   ├── storage.ts    # Token storage
+│   │   │   └── guards.ts     # Route guards
+│   │   ├── validations/      # Zod schemas
+│   │   │   ├── auth.ts       # Auth validation schemas
+│   │   │   ├── booking.ts    # Booking validation schemas
+│   │   │   └── common.ts     # Shared validation utilities
+│   │   ├── utils.ts          # General utilities
+│   │   └── constants.ts      # App constants
+│   ├── routes/               # Route components (file-based routing)
+│   │   ├── __root.tsx        # Root layout and providers
+│   │   ├── index.tsx         # Landing page
+│   │   ├── auth/             # Authentication routes
+│   │   │   ├── login.tsx
+│   │   │   ├── register.tsx
+│   │   │   └── verify-email.tsx
+│   │   ├── guest/            # Guest booking routes
+│   │   │   ├── access.tsx    # Guest access flow
+│   │   │   ├── bookings/     # Guest booking management
+│   │   │   │   ├── index.tsx # List bookings
+│   │   │   │   ├── create.tsx# Create booking
+│   │   │   │   └── $id.tsx   # View/edit booking
+│   │   │   └── booking.tsx   # Single booking with manage token
+│   │   ├── dashboard/        # User dashboard
+│   │   │   ├── index.tsx     # Dashboard overview
+│   │   │   ├── bookings/     # User bookings management
+│   │   │   └── profile.tsx   # User profile
+│   │   └── admin/            # Admin panel
+│   │       ├── index.tsx     # Admin dashboard
+│   │       ├── bookings.tsx  # Booking management
+│   │       └── users.tsx     # User management
+│   ├── stores/               # Zustand stores for client state
+│   │   ├── auth.ts           # Authentication state
+│   │   ├── ui.ts             # UI preferences and state
+│   │   └── booking.ts        # Booking form state
+│   ├── styles/               # Styling files
+│   │   ├── globals.css       # Global styles and Tailwind imports
+│   │   └── components.css    # Component-specific styles
+│   ├── types/                # TypeScript type definitions
+│   │   ├── api.ts            # API response types
+│   │   ├── auth.ts           # Authentication types
+│   │   ├── booking.ts        # Booking types
+│   │   └── common.ts         # Shared types
+│   └── main.tsx              # App entry point
+├── package.json              # Dependencies and scripts
+├── vite.config.ts            # Vite configuration
+├── tailwind.config.js        # Tailwind configuration
+├── tsconfig.json             # TypeScript configuration
+└── .env.example              # Environment variables template
+```
+
+## 🚀 Quick Start
+
+### Prerequisites
+- Node.js 18+ 
+- npm or yarn
+- Backend services running (see main setup guide)
+
+### Setup
+
+1. **Create React Project with Vite:**
+```bash
+npm create vite@latest frontend -- --template react-ts
+cd frontend
+npm install
+```
+
+2. **Install Core Dependencies:**
+```bash
+# Routing and Navigation
+npm install @tanstack/react-router @tanstack/router-vite-plugin
+
+# State Management
+npm install @tanstack/react-query zustand
+
+# Forms and Validation  
+npm install react-hook-form @hookform/resolvers zod
+
+# UI and Styling
+npm install tailwindcss @headlessui/react @tailwindcss/forms
+npm install lucide-react clsx tailwind-merge
+
+# Date handling
+npm install date-fns
+
+# Notifications
+npm install sonner
+
+# HTTP Client (if needed beyond fetch)
+npm install axios
+```
+
+3. **Install Dev Dependencies:**
+```bash
+npm install -D @types/node @tailwindcss/typography
+npm install -D vitest @testing-library/react @testing-library/jest-dom
+npm install -D playwright @playwright/test
+npm install -D eslint @typescript-eslint/eslint-plugin
+npm install -D prettier eslint-config-prettier
+```
+
+4. **Configure Environment:**
+```bash
+cp .env.example .env.local
+```
+
+Edit `.env.local`:
+```env
+VITE_API_URL=http://localhost:8080
+VITE_APP_NAME=LuxSuv Bookings
+VITE_ENVIRONMENT=development
+```
+
+5. **Start Development:**
+```bash
+npm run dev
+```
+
+## 🎨 Design System Implementation
+
+### Tailwind Configuration
+```js
+// tailwind.config.js
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
+  theme: {
+    extend: {
+      colors: {
+        primary: {
+          50: '#f0f9ff',
+          100: '#e0f2fe', 
+          200: '#bae6fd',
+          300: '#7dd3fc',
+          400: '#38bdf8',
+          500: '#0ea5e9',  // Main brand color
+          600: '#0284c7',
+          700: '#0369a1',
+          800: '#075985',
+          900: '#0c4a6e',
+        },
+        gray: {
+          50: '#f9fafb',
+          100: '#f3f4f6',
+          200: '#e5e7eb',
+          300: '#d1d5db',
+          400: '#9ca3af',
+          500: '#6b7280',
+          600: '#4b5563',
+          700: '#374151',
+          800: '#1f2937',
+          900: '#111827',
+        },
+        success: {
+          50: '#f0fdf4',
+          500: '#22c55e',
+          600: '#16a34a',
+        },
+        warning: {
+          50: '#fffbeb', 
+          500: '#f59e0b',
+          600: '#d97706',
+        },
+        error: {
+          50: '#fef2f2',
+          500: '#ef4444',
+          600: '#dc2626',
+        },
+      },
+      fontFamily: {
+        sans: ['Inter', 'system-ui', 'sans-serif'],
+      },
+      spacing: {
+        '18': '4.5rem',
+        '88': '22rem',
+      },
+      animation: {
+        'fade-in': 'fadeIn 0.5s ease-in-out',
+        'slide-up': 'slideUp 0.3s ease-out',
+        'pulse-subtle': 'pulseSubtle 2s infinite',
+      },
+      keyframes: {
+        fadeIn: {
+          '0%': { opacity: '0' },
+          '100%': { opacity: '1' },
+        },
+        slideUp: {
+          '0%': { transform: 'translateY(20px)', opacity: '0' },
+          '100%': { transform: 'translateY(0)', opacity: '1' },
+        },
+        pulseSubtle: {
+          '0%, 100%': { opacity: '1' },
+          '50%': { opacity: '0.8' },
+        },
+      },
+    },
+  },
+  plugins: [
+    require('@tailwindcss/forms'),
+    require('@tailwindcss/typography'),
+  ],
+}
+```
+
+### Base UI Components
+
+#### Button Component
+```tsx
+// src/components/ui/Button.tsx
+import React from 'react'
+import { clsx } from 'clsx'
+import { Loader2 } from 'lucide-react'
+
+interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: 'primary' | 'secondary' | 'ghost' | 'danger'
+  size?: 'sm' | 'md' | 'lg'
+  isLoading?: boolean
+  leftIcon?: React.ReactNode
+  rightIcon?: React.ReactNode
+}
+
+export const Button: React.FC<ButtonProps> = ({
+  variant = 'primary',
+  size = 'md',
+  isLoading = false,
+  leftIcon,
+  rightIcon,
+  children,
+  className,
+  disabled,
+  ...props
+}) => {
+  const baseClasses = 'inline-flex items-center justify-center font-medium rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed'
+  
+  const variants = {
+    primary: 'bg-primary-600 text-white hover:bg-primary-700 focus:ring-primary-500 shadow-sm hover:shadow-md',
+    secondary: 'bg-gray-100 text-gray-900 hover:bg-gray-200 focus:ring-gray-500 border border-gray-300',
+    ghost: 'text-gray-700 hover:bg-gray-100 focus:ring-gray-500',
+    danger: 'bg-error-600 text-white hover:bg-error-700 focus:ring-error-500 shadow-sm hover:shadow-md',
+  }
+  
+  const sizes = {
+    sm: 'px-3 py-1.5 text-sm gap-1.5',
+    md: 'px-4 py-2 text-base gap-2',
+    lg: 'px-6 py-3 text-lg gap-2.5',
+  }
+
+  return (
+    <button
+      className={clsx(
+        baseClasses,
+        variants[variant],
+        sizes[size],
+        className
+      )}
+      disabled={disabled || isLoading}
+      {...props}
+    >
+      {isLoading ? (
+        <Loader2 className="w-4 h-4 animate-spin" />
+      ) : (
+        leftIcon
+      )}
+      {children}
+      {!isLoading && rightIcon}
+    </button>
+  )
+}
+```
+
+#### Input Component
+```tsx
+// src/components/ui/Input.tsx
+import React from 'react'
+import { clsx } from 'clsx'
+
+interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+  label?: string
+  error?: string
+  helpText?: string
+  leftIcon?: React.ReactNode
+  rightIcon?: React.ReactNode
+}
+
+export const Input: React.FC<InputProps> = ({
+  label,
+  error,
+  helpText,
+  leftIcon,
+  rightIcon,
+  className,
+  id,
+  ...props
+}) => {
+  const inputId = id || `input-${Math.random().toString(36).substr(2, 9)}`
+  
+  return (
+    <div className="space-y-1">
+      {label && (
+        <label 
+          htmlFor={inputId}
+          className="block text-sm font-medium text-gray-700"
+        >
+          {label}
+        </label>
+      )}
+      
+      <div className="relative">
+        {leftIcon && (
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <div className="h-5 w-5 text-gray-400">
+              {leftIcon}
+            </div>
+          </div>
+        )}
+        
+        <input
+          id={inputId}
+          className={clsx(
+            'block w-full rounded-lg border-gray-300 shadow-sm transition-colors duration-200',
+            'focus:border-primary-500 focus:ring-primary-500',
+            'disabled:bg-gray-50 disabled:text-gray-500',
+            {
+              'border-error-300 focus:border-error-500 focus:ring-error-500': error,
+              'pl-10': leftIcon,
+              'pr-10': rightIcon,
+            },
+            className
+          )}
+          {...props}
+        />
+        
+        {rightIcon && (
+          <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+            <div className="h-5 w-5 text-gray-400">
+              {rightIcon}
+            </div>
+          </div>
+        )}
+      </div>
+      
+      {error && (
+        <p className="text-sm text-error-600">{error}</p>
+      )}
+      
+      {helpText && !error && (
+        <p className="text-sm text-gray-500">{helpText}</p>
+      )}
+    </div>
+  )
+}
+```
+
+## 🔧 API Integration
+
+### API Client Setup
+```tsx
+// src/lib/api/client.ts
+import { QueryClient } from '@tanstack/react-query'
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080'
+
+export class APIError extends Error {
+  constructor(
+    public status: number,
+    public code?: string,
+    public details?: string,
+    message?: string
+  ) {
+    super(message || 'API Error')
+    this.name = 'APIError'
+  }
+}
+
+export class APIClient {
+  private baseURL: string
+
+  constructor(baseURL: string = API_BASE_URL) {
+    this.baseURL = baseURL
+  }
+
+  private async request<T>(
+    endpoint: string,
+    options: RequestInit = {}
+  ): Promise<T> {
+    const url = `${this.baseURL}${endpoint}`
+    const token = localStorage.getItem('auth_token') || localStorage.getItem('guest_session_token')
+    
+    const config: RequestInit = {
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token && { Authorization: `Bearer ${token}` }),
+        ...options.headers,
+      },
+      ...options,
+    }
+
+    try {
+      const response = await fetch(url, config)
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new APIError(
+          response.status,
+          errorData.code,
+          errorData.details,
+          errorData.error || response.statusText
+        )
+      }
+
+      // Handle no content responses
+      if (response.status === 204) {
+        return null as T
+      }
+
+      return await response.json()
+    } catch (error) {
+      if (error instanceof APIError) {
+        throw error
+      }
+      throw new APIError(0, 'NETWORK_ERROR', undefined, 'Network request failed')
+    }
+  }
+
+  // HTTP methods
+  get<T>(endpoint: string, options?: RequestInit): Promise<T> {
+    return this.request<T>(endpoint, { method: 'GET', ...options })
+  }
+
+  post<T>(endpoint: string, data?: any, options?: RequestInit): Promise<T> {
+    return this.request<T>(endpoint, {
+      method: 'POST',
+      body: data ? JSON.stringify(data) : undefined,
+      ...options,
+    })
+  }
+
+  patch<T>(endpoint: string, data?: any, options?: RequestInit): Promise<T> {
+    return this.request<T>(endpoint, {
+      method: 'PATCH', 
+      body: data ? JSON.stringify(data) : undefined,
+      ...options,
+    })
+  }
+
+  delete<T>(endpoint: string, options?: RequestInit): Promise<T> {
+    return this.request<T>(endpoint, { method: 'DELETE', ...options })
+  }
+}
+
+export const apiClient = new APIClient()
+
+// React Query setup
+export const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: (failureCount, error) => {
+        if (error instanceof APIError && error.status === 401) return false
+        return failureCount < 3
+      },
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      gcTime: 10 * 60 * 1000, // 10 minutes
+    },
+    mutations: {
+      retry: false,
+    },
+  },
+})
+```
+
+### Auth API Methods
+```tsx
+// src/lib/api/auth.ts
+import { apiClient } from './client'
+import type { LoginRequest, RegisterRequest, User, LoginResponse } from '../types/auth'
+
+export const authAPI = {
+  // User authentication
+  register: (data: RegisterRequest): Promise<{ message: string; user: User; dev_verify_url?: string }> =>
+    apiClient.post('/v1/auth/register', data),
+    
+  login: (data: LoginRequest): Promise<LoginResponse> =>
+    apiClient.post('/v1/auth/login', data),
+    
+  verifyEmail: (token: string): Promise<{ message: string; user: User }> =>
+    apiClient.post(`/v1/auth/verify-email?token=${token}`),
+    
+  resendVerification: (email: string): Promise<{ message: string }> =>
+    apiClient.post('/v1/auth/resend-verification', { email }),
+    
+  refreshToken: (refreshToken: string): Promise<LoginResponse> =>
+    apiClient.post('/v1/auth/refresh', { refresh_token: refreshToken }),
+
+  // Guest access
+  requestGuestAccess: (email: string): Promise<{ message: string }> =>
+    apiClient.post('/v1/guest/access/request', { email }),
+    
+  verifyGuestCode: (email: string, code: string): Promise<{ session_token: string; expires_in: number }> =>
+    apiClient.post('/v1/guest/access/verify', { email, code }),
+    
+  verifyMagicLink: (token: string): Promise<{ session_token: string; expires_in: number }> =>
+    apiClient.post(`/v1/guest/access/magic?token=${token}`),
+}
+```
+
+### Bookings API Methods
+```tsx
+// src/lib/api/bookings.ts
+import { apiClient } from './client'
+import type { CreateBookingRequest, Booking, BookingListResponse, GuestBookingResponse } from '../types/booking'
+
+export const bookingsAPI = {
+  // Guest bookings
+  createGuestBooking: (data: CreateBookingRequest, idempotencyKey?: string): Promise<GuestBookingResponse> =>
+    apiClient.post('/v1/guest/bookings', data, {
+      headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {},
+    }),
+    
+  listGuestBookings: (params: { limit?: number; offset?: number; status?: string } = {}): Promise<BookingListResponse> => {
+    const searchParams = new URLSearchParams()
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined) searchParams.append(key, String(value))
+    })
+    return apiClient.get(`/v1/guest/bookings?${searchParams}`)
+  },
+  
+  getGuestBooking: (id: number, manageToken?: string): Promise<Booking> => {
+    const url = manageToken 
+      ? `/v1/guest/bookings/${id}?manage_token=${manageToken}`
+      : `/v1/guest/bookings/${id}`
+    return apiClient.get(url)
+  },
+  
+  updateGuestBooking: (id: number, data: Partial<CreateBookingRequest>, manageToken?: string): Promise<Booking> => {
+    const url = manageToken
+      ? `/v1/guest/bookings/${id}?manage_token=${manageToken}`
+      : `/v1/guest/bookings/${id}`
+    return apiClient.patch(url, data)
+  },
+  
+  cancelGuestBooking: (id: number, manageToken?: string): Promise<void> => {
+    const url = manageToken
+      ? `/v1/guest/bookings/${id}?manage_token=${manageToken}`
+      : `/v1/guest/bookings/${id}`
+    return apiClient.delete(url)
+  },
+
+  // Rider bookings (authenticated)
+  createRiderBooking: (data: Omit<CreateBookingRequest, 'rider_name' | 'rider_email' | 'rider_phone'>): Promise<Booking> =>
+    apiClient.post('/v1/rider/bookings', data),
+    
+  listRiderBookings: (params: { limit?: number; offset?: number; status?: string } = {}): Promise<BookingListResponse> => {
+    const searchParams = new URLSearchParams()
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined) searchParams.append(key, String(value))
+    })
+    return apiClient.get(`/v1/rider/bookings?${searchParams}`)
+  },
+  
+  getRiderBooking: (id: number): Promise<Booking> =>
+    apiClient.get(`/v1/rider/bookings/${id}`),
+    
+  updateRiderBooking: (id: number, data: Partial<CreateBookingRequest>): Promise<Booking> =>
+    apiClient.patch(`/v1/rider/bookings/${id}`, data),
+    
+  cancelRiderBooking: (id: number): Promise<void> =>
+    apiClient.delete(`/v1/rider/bookings/${id}`),
+}
+```
+
+## ⚛️ State Management
+
+### Authentication Store (Zustand)
+```tsx
+// src/stores/auth.ts
+import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
+
+interface User {
+  id: number
+  email: string
+  name: string
+  phone: string
+  role: string
+  is_verified: boolean
+}
+
+interface AuthState {
+  // User state
+  user: User | null
+  isAuthenticated: boolean
+  
+  // Guest state
+  guestEmail: string | null
+  guestSessionToken: string | null
+  guestExpiresAt: number | null
+  
+  // Actions
+  setUser: (user: User, accessToken: string, refreshToken?: string) => void
+  setGuestSession: (email: string, token: string, expiresIn: number) => void
+  clearAuth: () => void
+  clearGuestSession: () => void
+  
+  // Getters
+  isGuestAuthenticated: () => boolean
+  isTokenExpired: () => boolean
+}
+
+export const useAuthStore = create<AuthState>()(
+  persist(
+    (set, get) => ({
+      // Initial state
+      user: null,
+      isAuthenticated: false,
+      guestEmail: null,
+      guestSessionToken: null,
+      guestExpiresAt: null,
+      
+      // Actions
+      setUser: (user, accessToken, refreshToken) => {
+        localStorage.setItem('auth_token', accessToken)
+        if (refreshToken) {
+          localStorage.setItem('refresh_token', refreshToken)
+        }
+        set({ user, isAuthenticated: true })
+      },
+      
+      setGuestSession: (email, token, expiresIn) => {
+        const expiresAt = Date.now() + (expiresIn * 1000)
+        localStorage.setItem('guest_session_token', token)
+        set({
+          guestEmail: email,
+          guestSessionToken: token,
+          guestExpiresAt: expiresAt,
+        })
+      },
+      
+      clearAuth: () => {
+        localStorage.removeItem('auth_token')
+        localStorage.removeItem('refresh_token')
+        set({ user: null, isAuthenticated: false })
+      },
+      
+      clearGuestSession: () => {
+        localStorage.removeItem('guest_session_token')
+        set({
+          guestEmail: null,
+          guestSessionToken: null,
+          guestExpiresAt: null,
+        })
+      },
+      
+      // Getters
+      isGuestAuthenticated: () => {
+        const state = get()
+        return !!(
+          state.guestSessionToken &&
+          state.guestExpiresAt &&
+          Date.now() < state.guestExpiresAt
+        )
+      },
+      
+      isTokenExpired: () => {
+        const state = get()
+        return !!(
+          state.guestExpiresAt &&
+          Date.now() >= state.guestExpiresAt
+        )
+      },
+    }),
+    {
+      name: 'luxsuv-auth',
+      partialize: (state) => ({
+        user: state.user,
+        isAuthenticated: state.isAuthenticated,
+        guestEmail: state.guestEmail,
+        guestExpiresAt: state.guestExpiresAt,
+      }),
+    }
+  )
+)
+```
+
+### Authentication Hooks
+```tsx
+// src/hooks/api/useAuth.ts
+import { useMutation, useQuery } from '@tanstack/react-query'
+import { useNavigate } from '@tanstack/react-router'
+import { authAPI } from '../../lib/api/auth'
+import { useAuthStore } from '../../stores/auth'
+import { useToast } from '../ui/useToast'
+import type { LoginRequest, RegisterRequest } from '../../types/auth'
+
+export function useAuth() {
+  const { user, isAuthenticated, setUser, clearAuth } = useAuthStore()
+  const navigate = useNavigate()
+  const { toast } = useToast()
+
+  // User registration
+  const registerMutation = useMutation({
+    mutationFn: (data: RegisterRequest) => authAPI.register(data),
+    onSuccess: (data) => {
+      toast.success('Registration successful! Please check your email to verify your account.')
+      if (data.dev_verify_url) {
+        console.log('Dev verification URL:', data.dev_verify_url)
+      }
+      navigate({ to: '/auth/login' })
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Registration failed')
+    },
+  })
+
+  // User login
+  const loginMutation = useMutation({
+    mutationFn: (data: LoginRequest) => authAPI.login(data),
+    onSuccess: (data) => {
+      setUser(data.user, data.access_token, data.refresh_token)
+      toast.success('Welcome back!')
+      navigate({ to: '/dashboard' })
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Login failed')
+    },
+  })
+
+  // Email verification
+  const verifyEmailMutation = useMutation({
+    mutationFn: (token: string) => authAPI.verifyEmail(token),
+    onSuccess: (data) => {
+      toast.success('Email verified successfully!')
+      navigate({ to: '/auth/login' })
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Email verification failed')
+    },
+  })
+
+  // Logout
+  const logout = () => {
+    clearAuth()
+    navigate({ to: '/' })
+    toast.success('Logged out successfully')
+  }
+
+  return {
+    user,
+    isAuthenticated,
+    register: registerMutation.mutate,
+    isRegistering: registerMutation.isPending,
+    login: loginMutation.mutate,
+    isLoggingIn: loginMutation.isPending,
+    verifyEmail: verifyEmailMutation.mutate,
+    isVerifyingEmail: verifyEmailMutation.isPending,
+    logout,
+  }
+}
+```
+
+### Guest Access Hooks
+```tsx
+// src/hooks/api/useGuestAccess.ts
+import { useMutation } from '@tanstack/react-query'
+import { useNavigate } from '@tanstack/react-router'
+import { authAPI } from '../../lib/api/auth'
+import { useAuthStore } from '../../stores/auth'
+import { useToast } from '../ui/useToast'
+
+export function useGuestAccess() {
+  const { setGuestSession, guestEmail } = useAuthStore()
+  const navigate = useNavigate()
+  const { toast } = useToast()
+
+  // Request access code
+  const requestAccessMutation = useMutation({
+    mutationFn: (email: string) => authAPI.requestGuestAccess(email),
+    onSuccess: () => {
+      toast.success('Access code sent to your email!')
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to send access code')
+    },
+  })
+
+  // Verify access code
+  const verifyCodeMutation = useMutation({
+    mutationFn: ({ email, code }: { email: string; code: string }) =>
+      authAPI.verifyGuestCode(email, code),
+    onSuccess: (data, variables) => {
+      setGuestSession(variables.email, data.session_token, data.expires_in)
+      toast.success('Access granted!')
+      navigate({ to: '/guest/bookings' })
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Invalid or expired code')
+    },
+  })
+
+  // Verify magic link
+  const verifyMagicMutation = useMutation({
+    mutationFn: (token: string) => authAPI.verifyMagicLink(token),
+    onSuccess: (data) => {
+      // Note: We don't know the email from magic link response
+      // The backend should include it in the response
+      toast.success('Access granted via magic link!')
+      navigate({ to: '/guest/bookings' })
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Invalid or expired magic link')
+    },
+  })
+
+  return {
+    guestEmail,
+    requestAccess: requestAccessMutation.mutate,
+    isRequestingAccess: requestAccessMutation.isPending,
+    verifyCode: verifyCodeMutation.mutate,
+    isVerifyingCode: verifyCodeMutation.isPending,
+    verifyMagicLink: verifyMagicMutation.mutate,
+    isVerifyingMagic: verifyMagicMutation.isPending,
+  }
+}
+```
+
+### Bookings Hooks
+```tsx
+// src/hooks/api/useBookings.ts
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { bookingsAPI } from '../../lib/api/bookings'
+import { useAuthStore } from '../../stores/auth'
+import { useToast } from '../ui/useToast'
+import type { CreateBookingRequest, Booking } from '../../types/booking'
+
+export function useBookings() {
+  const { isAuthenticated, isGuestAuthenticated } = useAuthStore()
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
+  
+  const isAnyAuth = isAuthenticated || isGuestAuthenticated()
+
+  // List bookings
+  const bookingsQuery = useQuery({
+    queryKey: ['bookings'],
+    queryFn: () => isAuthenticated 
+      ? bookingsAPI.listRiderBookings()
+      : bookingsAPI.listGuestBookings(),
+    enabled: isAnyAuth,
+  })
+
+  // Create booking mutation
+  const createBookingMutation = useMutation({
+    mutationFn: ({ data, idempotencyKey }: { data: CreateBookingRequest; idempotencyKey?: string }) =>
+      isAuthenticated 
+        ? bookingsAPI.createRiderBooking(data)
+        : bookingsAPI.createGuestBooking(data, idempotencyKey),
+    onSuccess: (newBooking) => {
+      queryClient.setQueryData(['bookings'], (old: Booking[] = []) => 
+        [newBooking, ...old]
+      )
+      toast.success('Booking created successfully!')
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to create booking')
+    },
+  })
+
+  // Update booking mutation
+  const updateBookingMutation = useMutation({
+    mutationFn: ({ id, data, manageToken }: { id: number; data: Partial<CreateBookingRequest>; manageToken?: string }) =>
+      isAuthenticated
+        ? bookingsAPI.updateRiderBooking(id, data)
+        : bookingsAPI.updateGuestBooking(id, data, manageToken),
+    onSuccess: (updatedBooking) => {
+      queryClient.setQueryData(['bookings'], (old: Booking[] = []) =>
+        old.map(booking => booking.id === updatedBooking.id ? updatedBooking : booking)
+      )
+      queryClient.setQueryData(['booking', updatedBooking.id], updatedBooking)
+      toast.success('Booking updated successfully!')
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to update booking')
+    },
+  })
+
+  // Cancel booking mutation
+  const cancelBookingMutation = useMutation({
+    mutationFn: ({ id, manageToken }: { id: number; manageToken?: string }) =>
+      isAuthenticated
+        ? bookingsAPI.cancelRiderBooking(id)
+        : bookingsAPI.cancelGuestBooking(id, manageToken),
+    onSuccess: (_, variables) => {
+      queryClient.setQueryData(['bookings'], (old: Booking[] = []) =>
+        old.map(booking => 
+          booking.id === variables.id 
+            ? { ...booking, status: 'canceled' }
+            : booking
+        )
+      )
+      toast.success('Booking canceled successfully')
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to cancel booking')
+    },
+  })
+
+  return {
+    // Data
+    bookings: bookingsQuery.data || [],
+    isLoading: bookingsQuery.isLoading,
+    isError: bookingsQuery.isError,
+    error: bookingsQuery.error,
+    
+    // Actions
+    createBooking: createBookingMutation.mutate,
+    isCreating: createBookingMutation.isPending,
+    updateBooking: updateBookingMutation.mutate,
+    isUpdating: updateBookingMutation.isPending,
+    cancelBooking: cancelBookingMutation.mutate,
+    isCanceling: cancelBookingMutation.isPending,
+    
+    // Utils
+    refetch: bookingsQuery.refetch,
+  }
+}
+
+// Hook for single booking
+export function useBooking(id: number, manageToken?: string) {
+  const { isAuthenticated } = useAuthStore()
+  
+  return useQuery({
+    queryKey: ['booking', id, manageToken],
+    queryFn: () => isAuthenticated
+      ? bookingsAPI.getRiderBooking(id)
+      : bookingsAPI.getGuestBooking(id, manageToken),
+    enabled: !!id,
+  })
+}
+```
+
+## 🗂️ Form Management
+
+### Booking Form Component
+```tsx
+// src/components/forms/BookingForm.tsx
+import React from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { format } from 'date-fns'
+import { Calendar, MapPin, Users, Luggage } from 'lucide-react'
+import { Button } from '../ui/Button'
+import { Input } from '../ui/Input'
+import { createBookingSchema } from '../../lib/validations/booking'
+import { useAuthStore } from '../../stores/auth'
+import type { CreateBookingRequest } from '../../types/booking'
+
+interface BookingFormProps {
+  defaultValues?: Partial<CreateBookingRequest>
+  onSubmit: (data: CreateBookingRequest) => void
+  isLoading?: boolean
+  submitLabel?: string
+}
+
+export const BookingForm: React.FC<BookingFormProps> = ({
+  defaultValues,
+  onSubmit,
+  isLoading = false,
+  submitLabel = 'Create Booking',
+}) => {
+  const { isAuthenticated } = useAuthStore()
+  
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    watch,
+    setValue,
+  } = useForm<CreateBookingRequest>({
+    resolver: zodResolver(createBookingSchema),
+    defaultValues: {
+      passengers: 1,
+      luggages: 0,
+      ride_type: 'per_ride',
+      ...defaultValues,
+    },
+  })
+
+  const watchedPassengers = watch('passengers')
+  const watchedScheduledAt = watch('scheduled_at')
+
+  // Auto-set minimum scheduled time (1 hour from now)
+  React.useEffect(() => {
+    if (!watchedScheduledAt) {
+      const minTime = new Date()
+      minTime.setHours(minTime.getHours() + 1)
+      setValue('scheduled_at', format(minTime, "yyyy-MM-dd'T'HH:mm"))
+    }
+  }, [setValue, watchedScheduledAt])
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+      {/* Contact Information (only for guest bookings) */}
+      {!isAuthenticated && (
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold text-gray-900">Contact Information</h3>
+          
+          <Input
+            label="Full Name"
+            {...register('rider_name')}
+            error={errors.rider_name?.message}
+            placeholder="John Doe"
+          />
+          
+          <Input
+            label="Email Address"
+            type="email"
+            {...register('rider_email')}
+            error={errors.rider_email?.message}
+            placeholder="john@example.com"
+          />
+          
+          <Input
+            label="Phone Number"
+            type="tel"
+            {...register('rider_phone')}
+            error={errors.rider_phone?.message}
+            placeholder="+1 (555) 123-4567"
+          />
+        </div>
+      )}
+
+      {/* Trip Details */}
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold text-gray-900">Trip Details</h3>
+        
+        <Input
+          label="Pickup Location"
+          {...register('pickup')}
+          error={errors.pickup?.message}
+          placeholder="SFO Terminal 1"
+          leftIcon={<MapPin />}
+        />
+        
+        <Input
+          label="Dropoff Location"
+          {...register('dropoff')}
+          error={errors.dropoff?.message}
+          placeholder="Downtown Hotel"
+          leftIcon={<MapPin />}
+        />
+        
+        <Input
+          label="Scheduled Time"
+          type="datetime-local"
+          {...register('scheduled_at')}
+          error={errors.scheduled_at?.message}
+          leftIcon={<Calendar />}
+          min={format(new Date(), "yyyy-MM-dd'T'HH:mm")}
+        />
+        
+        <div className="grid grid-cols-2 gap-4">
+          <Input
+            label="Passengers"
+            type="number"
+            {...register('passengers', { valueAsNumber: true })}
+            error={errors.passengers?.message}
+            min={1}
+            max={8}
+            leftIcon={<Users />}
+          />
+          
+          <Input
+            label="Luggage Count"
+            type="number"
+            {...register('luggages', { valueAsNumber: true })}
+            error={errors.luggages?.message}
+            min={0}
+            max={10}
+            leftIcon={<Luggage />}
+          />
+        </div>
+        
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Ride Type
+          </label>
+          <div className="space-y-2">
+            <label className="flex items-center">
+              <input
+                type="radio"
+                {...register('ride_type')}
+                value="per_ride"
+                className="mr-3 text-primary-600 focus:ring-primary-500"
+              />
+              <span className="text-sm text-gray-700">Per Ride (Point to Point)</span>
+            </label>
+            <label className="flex items-center">
+              <input
+                type="radio"
+                {...register('ride_type')}
+                value="hourly"
+                className="mr-3 text-primary-600 focus:ring-primary-500"
+              />
+              <span className="text-sm text-gray-700">Hourly Rate</span>
+            </label>
+          </div>
+          {errors.ride_type && (
+            <p className="mt-1 text-sm text-error-600">{errors.ride_type.message}</p>
+          )}
+        </div>
+        
+        <Input
+          label="Special Notes"
+          {...register('notes')}
+          error={errors.notes?.message}
+          placeholder="Any special requests or notes..."
+          as="textarea"
+          rows={3}
+        />
+      </div>
+
+      {/* Submit Button */}
+      <Button
+        type="submit"
+        isLoading={isLoading}
+        className="w-full"
+        size="lg"
+      >
+        {submitLabel}
+      </Button>
+    </form>
+  )
+}
+```
+
+## 🛣️ Routing Implementation
+
+### Root Layout
+```tsx
+// src/routes/__root.tsx
+import { createRootRoute, Outlet } from '@tanstack/react-router'
+import { QueryClientProvider } from '@tanstack/react-query'
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
+import { Toaster } from 'sonner'
+import { queryClient } from '../lib/api/client'
+import { TanStackRouterDevtools } from '@tanstack/router-devtools'
+
+export const Route = createRootRoute({
+  component: RootComponent,
+})
+
+function RootComponent() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <div className="min-h-screen bg-gray-50">
+        <Outlet />
+        <Toaster 
+          position="top-right" 
+          expand={false}
+          richColors
+          closeButton
+        />
+      </div>
+      <ReactQueryDevtools initialIsOpen={false} />
+      <TanStackRouterDevtools />
+    </QueryClientProvider>
+  )
+}
+```
+
+### Guest Access Route
+```tsx
+// src/routes/guest/access.tsx
+import { createFileRoute } from '@tanstack/react-router'
+import { useState } from 'react'
+import { Mail, KeyRound } from 'lucide-react'
+import { Button } from '../../components/ui/Button'
+import { Input } from '../../components/ui/Input'
+import { useGuestAccess } from '../../hooks/api/useGuestAccess'
+
+export const Route = createFileRoute('/guest/access')({
+  component: GuestAccessPage,
+})
+
+function GuestAccessPage() {
+  const [email, setEmail] = useState('')
+  const [code, setCode] = useState('')
+  const [step, setStep] = useState<'request' | 'verify'>('request')
+  
+  const {
+    requestAccess,
+    isRequestingAccess,
+    verifyCode,
+    isVerifyingCode,
+  } = useGuestAccess()
+
+  const handleRequestAccess = () => {
+    requestAccess(email, {
+      onSuccess: () => {
+        setStep('verify')
+      },
+    })
+  }
+
+  const handleVerifyCode = () => {
+    verifyCode({ email, code })
+  }
+
+  if (step === 'verify') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 to-primary-100">
+        <div className="max-w-md w-full space-y-8 p-8">
+          <div className="text-center">
+            <KeyRound className="mx-auto h-12 w-12 text-primary-600" />
+            <h2 className="mt-6 text-3xl font-bold text-gray-900">
+              Enter Access Code
+            </h2>
+            <p className="mt-2 text-sm text-gray-600">
+              We sent a 6-digit code to <strong>{email}</strong>
+            </p>
+          </div>
+          
+          <div className="space-y-4">
+            <Input
+              label="6-Digit Code"
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              placeholder="123456"
+              maxLength={6}
+              className="text-center text-2xl tracking-widest"
+            />
+            
+            <Button
+              onClick={handleVerifyCode}
+              isLoading={isVerifyingCode}
+              disabled={code.length !== 6}
+              className="w-full"
+            >
+              Verify Code
+            </Button>
+            
+            <Button
+              variant="ghost"
+              onClick={() => setStep('request')}
+              className="w-full"
+            >
+              Use Different Email
+            </Button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 to-primary-100">
+      <div className="max-w-md w-full space-y-8 p-8">
+        <div className="text-center">
+          <Mail className="mx-auto h-12 w-12 text-primary-600" />
+          <h2 className="mt-6 text-3xl font-bold text-gray-900">
+            Quick Access
+          </h2>
+          <p className="mt-2 text-sm text-gray-600">
+            Enter your email to receive an instant access code
+          </p>
+        </div>
+        
+        <div className="space-y-4">
+          <Input
+            label="Email Address"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="john@example.com"
+            leftIcon={<Mail />}
+          />
+          
+          <Button
+            onClick={handleRequestAccess}
+            isLoading={isRequestingAccess}
+            disabled={!email}
+            className="w-full"
+          >
+            Send Access Code
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+```
+
+### Guest Bookings Route
+```tsx
+// src/routes/guest/bookings/index.tsx
+import { createFileRoute } from '@tanstack/react-router'
+import { Plus, Calendar, MapPin, Users, Clock } from 'lucide-react'
+import { format } from 'date-fns'
+import { Button } from '../../../components/ui/Button'
+import { useBookings } from '../../../hooks/api/useBookings'
+import { useAuthStore } from '../../../stores/auth'
+import type { Booking } from '../../../types/booking'
+
+export const Route = createFileRoute('/guest/bookings/')({
+  component: GuestBookingsPage,
+  beforeLoad: ({ context }) => {
+    const { isGuestAuthenticated } = useAuthStore.getState()
+    if (!isGuestAuthenticated()) {
+      throw redirect({ to: '/guest/access' })
+    }
+  },
+})
+
+function GuestBookingsPage() {
+  const { bookings, isLoading, isError } = useBookings()
+  const navigate = useNavigate()
+
+  if (isLoading) {
+    return <BookingListSkeleton />
+  }
+
+  if (isError) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center py-12">
+          <p className="text-gray-500">Failed to load bookings. Please try again.</p>
+          <Button onClick={() => window.location.reload()} className="mt-4">
+            Retry
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="container mx-auto px-4 py-8">
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-3xl font-bold text-gray-900">My Bookings</h1>
+        <Button
+          onClick={() => navigate({ to: '/guest/bookings/create' })}
+          leftIcon={<Plus />}
+        >
+          New Booking
+        </Button>
+      </div>
+
+      {bookings.length === 0 ? (
+        <EmptyBookingsState />
+      ) : (
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {bookings.map((booking) => (
+            <BookingCard key={booking.id} booking={booking} />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+const BookingCard: React.FC<{ booking: Booking }> = ({ booking }) => {
+  const navigate = useNavigate()
+  
+  const statusColors = {
+    pending: 'bg-yellow-100 text-yellow-800',
+    confirmed: 'bg-blue-100 text-blue-800',
+    assigned: 'bg-purple-100 text-purple-800',
+    on_trip: 'bg-green-100 text-green-800',
+    completed: 'bg-gray-100 text-gray-800',
+    canceled: 'bg-red-100 text-red-800',
+  }
+
+  return (
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow duration-200">
+      <div className="flex justify-between items-start mb-4">
+        <div className="flex-1">
+          <div className="flex items-center gap-2 mb-2">
+            <MapPin className="w-4 h-4 text-gray-400" />
+            <p className="text-sm text-gray-600">{booking.pickup}</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <MapPin className="w-4 h-4 text-gray-400" />
+            <p className="text-sm text-gray-600">{booking.dropoff}</p>
+          </div>
+        </div>
+        <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[booking.status]}`}>
+          {booking.status.replace('_', ' ').toUpperCase()}
+        </span>
+      </div>
+      
+      <div className="space-y-2 mb-4">
+        <div className="flex items-center gap-2 text-sm text-gray-600">
+          <Calendar className="w-4 h-4" />
+          {format(new Date(booking.scheduled_at), 'MMM d, yyyy h:mm a')}
+        </div>
+        <div className="flex items-center gap-2 text-sm text-gray-600">
+          <Users className="w-4 h-4" />
+          {booking.passengers} passenger{booking.passengers !== 1 ? 's' : ''}
+          {booking.luggages > 0 && ` • ${booking.luggages} bag${booking.luggages !== 1 ? 's' : ''}`}
+        </div>
+      </div>
+      
+      {booking.notes && (
+        <p className="text-sm text-gray-600 mb-4 bg-gray-50 p-3 rounded-lg">
+          {booking.notes}
+        </p>
+      )}
+      
+      <Button
+        onClick={() => navigate({ to: `/guest/bookings/${booking.id}` })}
+        variant="secondary"
+        size="sm"
+        className="w-full"
+      >
+        View Details
+      </Button>
+    </div>
+  )
+}
+
+const EmptyBookingsState = () => (
+  <div className="text-center py-12">
+    <Calendar className="mx-auto h-24 w-24 text-gray-300" />
+    <h3 className="mt-4 text-lg font-semibold text-gray-900">No bookings yet</h3>
+    <p className="mt-2 text-gray-500">Create your first luxury SUV booking to get started.</p>
+    <Button
+      onClick={() => navigate({ to: '/guest/bookings/create' })}
+      className="mt-6"
+      leftIcon={<Plus />}
+    >
+      Create Booking
+    </Button>
+  </div>
+)
+
+const BookingListSkeleton = () => (
+  <div className="container mx-auto px-4 py-8">
+    <div className="h-8 bg-gray-200 rounded w-48 mb-8 animate-pulse" />
+    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      {[...Array(6)].map((_, i) => (
+        <div key={i} className="bg-white rounded-xl p-6 space-y-4">
+          <div className="h-4 bg-gray-200 rounded animate-pulse" />
+          <div className="h-4 bg-gray-200 rounded w-3/4 animate-pulse" />
+          <div className="h-8 bg-gray-200 rounded animate-pulse" />
+        </div>
+      ))}
+    </div>
+  </div>
+)
+```
+
+## 🔐 Authentication Flow Implementation
+
+### Login Component
+```tsx
+// src/routes/auth/login.tsx
+import { createFileRoute, Link } from '@tanstack/react-router'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { Mail, Lock, ArrowRight } from 'lucide-react'
+import { Button } from '../../components/ui/Button'
+import { Input } from '../../components/ui/Input'
+import { useAuth } from '../../hooks/api/useAuth'
+import { loginSchema } from '../../lib/validations/auth'
+import type { LoginRequest } from '../../types/auth'
+
+export const Route = createFileRoute('/auth/login')({
+  component: LoginPage,
+})
+
+function LoginPage() {
+  const { login, isLoggingIn } = useAuth()
+  
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<LoginRequest>({
+    resolver: zodResolver(loginSchema),
+  })
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 to-primary-100">
+      <div className="max-w-md w-full space-y-8 p-8 bg-white rounded-2xl shadow-xl">
+        <div className="text-center">
+          <h2 className="text-3xl font-bold text-gray-900">Welcome Back</h2>
+          <p className="mt-2 text-sm text-gray-600">
+            Sign in to your LuxSuv account
+          </p>
+        </div>
+        
+        <form onSubmit={handleSubmit(login)} className="space-y-6">
+          <Input
+            label="Email Address"
+            type="email"
+            {...register('email')}
+            error={errors.email?.message}
+            placeholder="john@example.com"
+            leftIcon={<Mail />}
+          />
+          
+          <Input
+            label="Password"
+            type="password"
+            {...register('password')}
+            error={errors.password?.message}
+            placeholder="••••••••"
+            leftIcon={<Lock />}
+          />
+          
+          <Button
+            type="submit"
+            isLoading={isLoggingIn}
+            className="w-full"
+            rightIcon={<ArrowRight />}
+          >
+            Sign In
+          </Button>
+        </form>
+        
+        <div className="text-center space-y-4">
+          <p className="text-sm text-gray-600">
+            Don't have an account?{' '}
+            <Link
+              to="/auth/register"
+              className="font-medium text-primary-600 hover:text-primary-500"
+            >
+              Sign up
+            </Link>
+          </p>
+          
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-300" />
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-2 bg-white text-gray-500">Or</span>
+            </div>
+          </div>
+          
+          <Link to="/guest/access">
+            <Button variant="secondary" className="w-full">
+              Quick Guest Access
+            </Button>
+          </Link>
+        </div>
+      </div>
+    </div>
+  )
+}
+```
+
+## 📱 Responsive Design Guidelines
+
+### Breakpoint Strategy
+```css
+/* Mobile First Approach */
+.container {
+  @apply px-4 mx-auto;
+  
+  /* sm: 640px */
+  @screen sm {
+    @apply px-6;
+  }
+  
+  /* md: 768px */
+  @screen md {
+    @apply px-8;
+  }
+  
+  /* lg: 1024px */
+  @screen lg {
+    @apply px-12 max-w-7xl;
+  }
+}
+```
+
+### Component Responsive Patterns
+```tsx
+// Example: Responsive Booking Grid
+<div className="grid gap-4 sm:gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+  {bookings.map(booking => (
+    <BookingCard key={booking.id} booking={booking} />
+  ))}
+</div>
+
+// Example: Responsive Form Layout  
+<div className="grid gap-4 sm:grid-cols-2">
+  <Input label="Passengers" />
+  <Input label="Luggage" />
+</div>
+
+// Example: Mobile Navigation
+<nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t">
+  <div className="grid grid-cols-4 py-2">
+    {navItems.map(item => (
+      <NavItem key={item.name} {...item} />
+    ))}
+  </div>
+</nav>
+```
+
+## 🧪 Testing Strategy
+
+### Unit Tests with Vitest
+```tsx
+// src/hooks/__tests__/useBookings.test.ts
+import { renderHook, waitFor } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { useBookings } from '../useBookings'
+import { bookingsAPI } from '../../lib/api/bookings'
+
+// Mock API
+vi.mock('../../lib/api/bookings')
+const mockBookingsAPI = vi.mocked(bookingsAPI)
+
+const createWrapper = () => {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  })
+  return ({ children }: { children: React.ReactNode }) => (
+    <QueryClientProvider client={queryClient}>
+      {children}
+    </QueryClientProvider>
+  )
+}
+
+describe('useBookings', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('fetches bookings successfully', async () => {
+    const mockBookings = [
+      { id: 1, rider_name: 'John Doe', status: 'pending' },
+      { id: 2, rider_name: 'Jane Smith', status: 'confirmed' },
+    ]
+    
+    mockBookingsAPI.listGuestBookings.mockResolvedValue({
+      bookings: mockBookings,
+      total: 2,
+    })
+
+    const { result } = renderHook(() => useBookings(), {
+      wrapper: createWrapper(),
+    })
+
+    await waitFor(() => {
+      expect(result.current.bookings).toHaveLength(2)
+      expect(result.current.isLoading).toBe(false)
+    })
+  })
+
+  it('handles booking creation', async () => {
+    const newBooking = { id: 3, rider_name: 'Bob Wilson', status: 'pending' }
+    mockBookingsAPI.createGuestBooking.mockResolvedValue({
+      id: 3,
+      manage_token: 'token-123',
+      status: 'pending',
+      scheduled_at: new Date().toISOString(),
+    })
+
+    const { result } = renderHook(() => useBookings(), {
+      wrapper: createWrapper(),
+    })
+
+    act(() => {
+      result.current.createBooking({
+        data: {
+          rider_name: 'Bob Wilson',
+          rider_email: 'bob@example.com',
+          rider_phone: '+1234567890',
+          pickup: 'Airport',
+          dropoff: 'Hotel',
+          scheduled_at: new Date().toISOString(),
+          passengers: 1,
+          luggages: 0,
+          ride_type: 'per_ride',
+        },
+      })
+    })
+
+    await waitFor(() => {
+      expect(result.current.isCreating).toBe(false)
+    })
+  })
+})
+```
+
+### E2E Tests with Playwright
+```tsx
+// tests/booking-flow.spec.ts
+import { test, expect } from '@playwright/test'
+
+test.describe('Guest Booking Flow', () => {
+  test('complete guest booking journey', async ({ page }) => {
+    // Navigate to guest access
+    await page.goto('/guest/access')
+    
+    // Request access code
+    await page.fill('[data-testid="email-input"]', 'test@example.com')
+    await page.click('[data-testid="request-access-btn"]')
+    
+    // Verify code (in real test, you'd get this from test email)
+    await page.fill('[data-testid="code-input"]', '123456')
+    await page.click('[data-testid="verify-code-btn"]')
+    
+    // Should navigate to bookings page
+    await expect(page).toHaveURL('/guest/bookings')
+    
+    // Create new booking
+    await page.click('[data-testid="new-booking-btn"]')
+    
+    // Fill booking form
+    await page.fill('[data-testid="pickup-input"]', 'SFO Terminal 1')
+    await page.fill('[data-testid="dropoff-input"]', 'Downtown Hotel')
+    await page.fill('[data-testid="passengers-input"]', '2')
+    
+    // Submit booking
+    await page.click('[data-testid="create-booking-btn"]')
+    
+    // Verify booking created
+    await expect(page.locator('[data-testid="booking-card"]')).toBeVisible()
+    await expect(page.locator('text=SFO Terminal 1')).toBeVisible()
+  })
+
+  test('booking validation errors', async ({ page }) => {
+    await page.goto('/guest/bookings/create')
+    
+    // Try to submit empty form
+    await page.click('[data-testid="create-booking-btn"]')
+    
+    // Check for validation errors
+    await expect(page.locator('text=Name is required')).toBeVisible()
+    await expect(page.locator('text=Email is required')).toBeVisible()
+    await expect(page.locator('text=Pickup location is required')).toBeVisible()
+  })
+})
+```
+
+## 🎯 Error Handling
+
+### Error Boundary Component
+```tsx
+// src/components/ErrorBoundary.tsx
+import React from 'react'
+import { QueryErrorResetBoundary } from '@tanstack/react-query'
+import { ErrorBoundary } from 'react-error-boundary'
+import { AlertTriangle, RefreshCw } from 'lucide-react'
+import { Button } from './ui/Button'
+
+interface ErrorFallbackProps {
+  error: Error
+  resetErrorBoundary: () => void
+}
+
+const ErrorFallback: React.FC<ErrorFallbackProps> = ({ error, resetErrorBoundary }) => (
+  <div className="min-h-screen flex items-center justify-center bg-gray-50">
+    <div className="max-w-md w-full text-center p-8">
+      <AlertTriangle className="mx-auto h-16 w-16 text-error-500 mb-6" />
+      <h2 className="text-2xl font-bold text-gray-900 mb-4">Something went wrong</h2>
+      <p className="text-gray-600 mb-6">
+        {error.message || 'An unexpected error occurred. Please try again.'}
+      </p>
+      <Button
+        onClick={resetErrorBoundary}
+        leftIcon={<RefreshCw />}
+      >
+        Try Again
+      </Button>
+    </div>
+  </div>
+)
+
+export const AppErrorBoundary: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <QueryErrorResetBoundary>
+    {({ reset }) => (
+      <ErrorBoundary onReset={reset} FallbackComponent={ErrorFallback}>
+        {children}
+      </ErrorBoundary>
+    )}
+  </QueryErrorResetBoundary>
+)
+```
+
+### API Error Handling
+```tsx
+// src/lib/utils/errorHandling.ts
+import { APIError } from '../api/client'
+
+export const getErrorMessage = (error: unknown): string => {
+  if (error instanceof APIError) {
+    switch (error.code) {
+      case 'INVALID_INPUT':
+        return error.details || 'Please check your input and try again'
+      case 'RATE_LIMIT_EXCEEDED':
+        return 'Too many requests. Please wait a moment and try again'
+      case 'UNAUTHORIZED':
+        return 'Your session has expired. Please sign in again'
+      case 'PAST_DATETIME':
+        return 'Scheduled time must be in the future'
+      default:
+        return error.message || 'An unexpected error occurred'
+    }
+  }
+  
+  if (error instanceof Error) {
+    return error.message
+  }
+  
+  return 'An unexpected error occurred'
+}
+
+export const handleAPIError = (error: unknown, defaultMessage?: string) => {
+  const message = getErrorMessage(error)
+  console.error('API Error:', error)
+  return defaultMessage || message
+}
+```
+
+## 🎨 Animation and Micro-interactions
+
+### Loading States
+```tsx
+// src/components/ui/LoadingSpinner.tsx
+import { Loader2 } from 'lucide-react'
+import { clsx } from 'clsx'
+
+interface LoadingSpinnerProps {
+  size?: 'sm' | 'md' | 'lg'
+  className?: string
+}
+
+export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({ 
+  size = 'md', 
+  className 
+}) => {
+  const sizes = {
+    sm: 'w-4 h-4',
+    md: 'w-6 h-6', 
+    lg: 'w-8 h-8',
+  }
+  
+  return (
+    <Loader2 
+      className={clsx(
+        'animate-spin text-primary-600',
+        sizes[size],
+        className
+      )} 
+    />
+  )
+}
+```
+
+### Page Transitions
+```tsx
+// src/components/PageTransition.tsx
+import { motion } from 'framer-motion'
+
+const pageVariants = {
+  initial: { opacity: 0, y: 20 },
+  in: { opacity: 1, y: 0 },
+  out: { opacity: 0, y: -20 },
+}
+
+const pageTransition = {
+  type: 'tween',
+  ease: 'anticipate',
+  duration: 0.4,
+}
+
+export const PageTransition: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <motion.div
+    initial="initial"
+    animate="in"
+    exit="out"
+    variants={pageVariants}
+    transition={pageTransition}
+  >
+    {children}
+  </motion.div>
+)
+```
+
+## 🚀 Build and Deployment
+
+### Vite Configuration
+```ts
+// vite.config.ts
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+import { TanStackRouterVite } from '@tanstack/router-vite-plugin'
+import path from 'path'
+
+export default defineConfig({
+  plugins: [
+    react(),
+    TanStackRouterVite(),
+  ],
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+    },
+  },
+  build: {
+    outDir: 'dist',
+    sourcemap: true,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom'],
+          router: ['@tanstack/react-router'],
+          query: ['@tanstack/react-query'],
+          ui: ['@headlessui/react', 'lucide-react'],
+        },
+      },
+    },
+  },
+  server: {
+    port: 5173,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, ''),
+      },
+    },
+  },
+})
+```
+
+### Environment Variables
+```bash
+# .env.example
+VITE_API_URL=http://localhost:8080
+VITE_APP_NAME=LuxSuv Bookings
+VITE_ENVIRONMENT=development
+
+# Optional: Analytics and Monitoring
+VITE_GA_MEASUREMENT_ID=
+VITE_SENTRY_DSN=
+VITE_HOTJAR_ID=
+
+# Feature Flags
+VITE_ENABLE_PWA=true
+VITE_ENABLE_OFFLINE_MODE=false
+```
+
+### Production Build
+```bash
+# Build for production
+npm run build
+
+# Preview production build
+npm run preview
+
+# Type check
+npm run type-check
+
+# Run all tests
+npm run test
+npm run test:e2e
+```
+
+### Deployment (Vercel/Netlify)
+```json
+// vercel.json or _redirects for Netlify
+{
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
+  ],
+  "headers": [
+    {
+      "source": "/(.*).(js|css|woff2?|png|jpg|jpeg|gif|svg|ico)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    }
+  ]
+}
+```
+
+## 📚 Development Workflow
+
+### Scripts Setup
+```json
+{
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "test": "vitest",
+    "test:e2e": "playwright test",
+    "test:ui": "vitest --ui",
+    "type-check": "tsc --noEmit",
+    "lint": "eslint src --ext ts,tsx",
+    "lint:fix": "eslint src --ext ts,tsx --fix",
+    "format": "prettier --write src/**/*.{ts,tsx}",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build"
+  }
+}
+```
+
+### Git Hooks (Husky)
+```json
+// package.json
+{
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged",
+      "pre-push": "npm run type-check && npm run test"
+    }
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ]
+  }
+}
+```
+
+## 🔒 Security Best Practices
+
+### Token Management
+```tsx
+// src/lib/auth/storage.ts
+export const tokenStorage = {
+  getAuthToken: (): string | null => {
+    return localStorage.getItem('auth_token')
+  },
+  
+  setAuthToken: (token: string): void => {
+    localStorage.setItem('auth_token', token)
+  },
+  
+  getRefreshToken: (): string | null => {
+    return localStorage.getItem('refresh_token')
+  },
+  
+  setRefreshToken: (token: string): void => {
+    localStorage.setItem('refresh_token', token)
+  },
+  
+  getGuestToken: (): string | null => {
+    return localStorage.getItem('guest_session_token')
+  },
+  
+  setGuestToken: (token: string): void => {
+    localStorage.setItem('guest_session_token', token)
+  },
+  
+  clearAll: (): void => {
+    localStorage.removeItem('auth_token')
+    localStorage.removeItem('refresh_token')
+    localStorage.removeItem('guest_session_token')
+  },
+}
+```
+
+### Input Sanitization
+```tsx
+// src/lib/utils/sanitization.ts
+export const sanitizeInput = (input: string): string => {
+  return input
+    .trim()
+    .replace(/[<>]/g, '') // Remove potential XSS characters
+    .slice(0, 1000) // Limit length
+}
+
+export const sanitizeEmail = (email: string): string => {
+  return email.toLowerCase().trim()
+}
+
+export const sanitizePhone = (phone: string): string => {
+  return phone.replace(/[^\d+\-\s()]/g, '')
+}
+```
+
+## 📊 Performance Optimization
+
+### Code Splitting
+```tsx
+// src/routes/lazy-routes.ts
+import { lazy } from 'react'
+
+// Lazy load heavy components
+export const AdminDashboard = lazy(() => import('../components/admin/AdminDashboard'))
+export const BookingAnalytics = lazy(() => import('../components/analytics/BookingAnalytics'))
+export const DriverMap = lazy(() => import('../components/map/DriverMap'))
+
+// Usage in routes
+import { Suspense } from 'react'
+import { LoadingSpinner } from '../components/ui/LoadingSpinner'
+
+function AdminRoute() {
+  return (
+    <Suspense fallback={<LoadingSpinner size="lg" />}>
+      <AdminDashboard />
+    </Suspense>
+  )
+}
+```
+
+### Image Optimization
+```tsx
+// src/components/ui/OptimizedImage.tsx
+import React, { useState } from 'react'
+import { clsx } from 'clsx'
+
+interface OptimizedImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
+  fallback?: string
+  placeholder?: React.ReactNode
+}
+
+export const OptimizedImage: React.FC<OptimizedImageProps> = ({
+  src,
+  alt,
+  fallback = '/images/placeholder.jpg',
+  placeholder,
+  className,
+  ...props
+}) => {
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState(false)
+
+  return (
+    <div className={clsx('relative overflow-hidden', className)}>
+      {isLoading && placeholder && (
+        <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
+          {placeholder}
+        </div>
+      )}
+      
+      <img
+        src={error ? fallback : src}
+        alt={alt}
+        onLoad={() => setIsLoading(false)}
+        onError={() => {
+          setError(true)
+          setIsLoading(false)
+        }}
+        className={clsx(
+          'transition-opacity duration-300',
+          isLoading ? 'opacity-0' : 'opacity-100',
+          className
+        )}
+        {...props}
+      />
+    </div>
+  )
+}
+```
+
+## 🌍 Internationalization (i18n)
+
+### Setup i18next
+```tsx
+// src/lib/i18n/index.ts
+import i18n from 'i18next'
+import { initReactI18next } from 'react-i18next'
+import Backend from 'i18next-http-backend'
+import LanguageDetector from 'i18next-browser-languagedetector'
+
+i18n
+  .use(Backend)
+  .use(LanguageDetector)
+  .use(initReactI18next)
+  .init({
+    lng: 'en',
+    fallbackLng: 'en',
+    debug: import.meta.env.DEV,
+
+    interpolation: {
+      escapeValue: false,
+    },
+
+    backend: {
+      loadPath: '/locales/{{lng}}/{{ns}}.json',
+    },
+
+    detection: {
+      order: ['localStorage', 'navigator', 'htmlTag'],
+      caches: ['localStorage'],
+    },
+  })
+
+export default i18n
+```
+
+### Translation Files
+```json
+// public/locales/en/common.json
+{
+  "navigation": {
+    "home": "Home",
+    "bookings": "Bookings", 
+    "profile": "Profile",
+    "admin": "Admin"
+  },
+  "booking": {
+    "create": "Create Booking",
+    "pickup": "Pickup Location",
+    "dropoff": "Dropoff Location", 
+    "passengers": "Passengers",
+    "luggage": "Luggage",
+    "notes": "Special Notes",
+    "scheduled_time": "Scheduled Time"
+  },
+  "auth": {
+    "login": "Sign In",
+    "register": "Sign Up",
+    "logout": "Sign Out",
+    "email": "Email Address",
+    "password": "Password",
+    "name": "Full Name",
+    "phone": "Phone Number"
+  },
+  "status": {
+    "pending": "Pending",
+    "confirmed": "Confirmed",
+    "assigned": "Assigned",
+    "on_trip": "On Trip",
+    "completed": "Completed",
+    "canceled": "Canceled"
+  }
+}
+```
+
+## 🏃‍♂️ Getting Started Checklist
+
+### Phase 1: Project Setup
+- [ ] Create Vite React TypeScript project
+- [ ] Install and configure dependencies
+- [ ] Set up Tailwind CSS with design system
+- [ ] Configure TypeScript paths and aliases
+- [ ] Set up ESLint and Prettier
+- [ ] Configure environment variables
+
+### Phase 2: Core Infrastructure
+- [ ] Implement API client with error handling
+- [ ] Set up React Query with proper configuration
+- [ ] Create Zustand stores for state management
+- [ ] Implement TanStack Router file-based routing
+- [ ] Set up error boundaries and fallbacks
+- [ ] Configure toast notifications
+
+### Phase 3: Design System
+- [ ] Build base UI components (Button, Input, Modal, etc.)
+- [ ] Implement responsive layout components
+- [ ] Create loading states and skeletons
+- [ ] Add animations and micro-interactions
+- [ ] Implement dark mode support (optional)
+
+### Phase 4: Authentication Features
+- [ ] User registration and email verification
+- [ ] User login with JWT handling
+- [ ] Guest access flow with email codes
+- [ ] Magic link authentication
+- [ ] Session management and token refresh
+- [ ] Route guards and protected routes
+
+### Phase 5: Booking Features
+- [ ] Guest booking creation form
+- [ ] Authenticated user booking flow
+- [ ] Booking list with filtering and pagination
+- [ ] Individual booking view and management
+- [ ] Booking editing with validation
+- [ ] Booking cancellation with confirmation
+
+### Phase 6: Advanced Features
+- [ ] Real-time updates via WebSockets
+- [ ] Offline support with service workers
+- [ ] Push notifications for booking updates
+- [ ] Advanced search and filtering
+- [ ] Booking history and analytics
+- [ ] Admin dashboard for management
+
+### Phase 7: Testing and Quality
+- [ ] Unit tests for components and hooks
+- [ ] Integration tests for user flows
+- [ ] E2E tests with Playwright
+- [ ] Accessibility testing and WCAG compliance
+- [ ] Performance testing and optimization
+- [ ] Cross-browser testing
+
+### Phase 8: Production Readiness
+- [ ] Bundle optimization and code splitting
+- [ ] SEO optimization with meta tags
+- [ ] Analytics integration (Google Analytics)
+- [ ] Error monitoring (Sentry)
+- [ ] Performance monitoring (Web Vitals)
+- [ ] CI/CD pipeline setup
+
+## 📞 Support and Resources
+
+### Useful Links
+- [React Documentation](https://react.dev/)
+- [TanStack Router Guide](https://tanstack.com/router)
+- [TanStack Query Guide](https://tanstack.com/query)
+- [Tailwind CSS Documentation](https://tailwindcss.com/)
+- [Headless UI Components](https://headlessui.com/)
+- [Zod Validation](https://zod.dev/)
+
+### Development Tools
+- **React DevTools** - Browser extension for React debugging
+- **TanStack Query DevTools** - Built-in query state inspector
+- **Redux DevTools** - For Zustand store debugging
+- **Tailwind CSS IntelliSense** - VS Code extension
+- **TypeScript Hero** - VS Code extension for imports
+
+This comprehensive guide provides everything needed to implement a production-ready React frontend for the LuxSuv booking platform. Each section includes practical examples and follows modern React best practices.
