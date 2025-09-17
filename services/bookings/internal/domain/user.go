@@ -1,6 +1,9 @@
 package domain
 
-import "time"
+import (
+	"strings"
+	"time"
+)
 
 type User struct {
 	ID           int64     `json:"id"`
@@ -25,6 +28,3 @@ type GuestAccessCode struct {
 	Attempts  int        `json:"attempts"`
 	CreatedAt time.Time  `json:"created_at"`
 }
-
-// Import the missing strings package
-import "strings"
