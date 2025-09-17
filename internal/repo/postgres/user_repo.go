@@ -21,6 +21,7 @@ type User struct {
 type UsersRepo interface {
 	Create(ctx context.Context, email, hash, name, phone string) (*User, error)
 	FindByEmail(ctx context.Context, email string) (*User, error)
+	FindByID(ctx context.Context, id int64) (*User, error)
 	LinkExistingBookings(ctx context.Context, userID int64, email string) error
 }
 
@@ -50,6 +51,19 @@ func (r *UsersRepoImpl) FindByEmail(ctx context.Context, email string) (*User, e
 	defer cancel()
 	var u User
 	if err := r.pool.QueryRow(ctx, q, email).Scan(
+		&u.ID, &u.Role, &u.Email, &u.PasswordHash, &u.Name, &u.Phone, &u.CreatedAt, &u.UpdatedAt,
+	); err != nil {
+		return nil, err
+	}
+	return &u, nil
+}
+
+func (r *UsersRepoImpl) FindByID(ctx context.Context, id int64) (*User, error) {
+	const q = `SELECT id, role, email, password_hash, name, phone, created_at, updated_at FROM users WHERE id=$1`
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+	var u User
+	if err := r.pool.QueryRow(ctx, q, id).Scan(
 		&u.ID, &u.Role, &u.Email, &u.PasswordHash, &u.Name, &u.Phone, &u.CreatedAt, &u.UpdatedAt,
 	); err != nil {
 		return nil, err

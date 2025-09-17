@@ -105,6 +105,19 @@ func main() {
 		gr.Mount("/v1/guest/access", guestAccess.Routes())
 	})
 
+	// Add email verification cleanup job (run every hour)
+	go func() {
+		ticker := time.NewTicker(time.Hour)
+		defer ticker.Stop()
+		for range ticker.C {
+			if deleted, err := verifyRepo.DeleteExpiredTokens(context.Background()); err != nil {
+				log.Printf("failed to cleanup expired verification tokens: %v", err)
+			} else if deleted > 0 {
+				log.Printf("cleaned up %d expired verification tokens", deleted)
+			}
+		}
+	}()
+
 	r.Mount("/v1/auth", authH.Routes())
 	r.Group(func(gr chi.Router) {
 		gr.Use(mw.RequireJWT)
