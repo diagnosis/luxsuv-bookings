@@ -19,12 +19,14 @@ import (
 type BookingsHandler struct{
 	Repo           *postgres.BookingRepoImpl
 	IdempotencyRepo postgres.IdempotencyRepo
+	UsersRepo      postgres.UsersRepo
 }
 
-func NewBookingsHandler(repo *postgres.BookingRepoImpl, idempotencyRepo postgres.IdempotencyRepo) *BookingsHandler {
+func NewBookingsHandler(repo *postgres.BookingRepoImpl, idempotencyRepo postgres.IdempotencyRepo, usersRepo postgres.UsersRepo) *BookingsHandler {
 	return &BookingsHandler{
 		Repo:           repo,
 		IdempotencyRepo: idempotencyRepo,
+		UsersRepo:      usersRepo,
 	}
 }
 
@@ -154,6 +156,13 @@ func (h *BookingsHandler) list(w http.ResponseWriter, r *http.Request) {
 	claims := guest_middleware.Claims(r)
 	if claims == nil {
 		response.Unauthorized(w, "Valid guest session required")
+		return
+	}
+
+	// Check if this email belongs to a registered user
+	if user, err := h.UsersRepo.FindByEmail(r.Context(), claims.Email); err == nil && user != nil {
+		// Email belongs to a registered user - they must login instead of using guest access
+		response.WriteError(w, http.StatusForbidden, "This email is associated with a registered account. Please login with your password instead of using guest access.", response.CodeForbidden)
 		return
 	}
 

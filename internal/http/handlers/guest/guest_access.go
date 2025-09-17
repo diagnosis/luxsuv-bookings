@@ -22,10 +22,11 @@ import (
 type AccessHandler struct {
 	Verify   postgres.VerifyRepo
 	EmailSvc mailer.Service
+	UsersRepo postgres.UsersRepo
 }
 
-func NewAccessHandler(verify postgres.VerifyRepo, emailSvc mailer.Service) *AccessHandler {
-	return &AccessHandler{Verify: verify, EmailSvc: emailSvc}
+func NewAccessHandler(verify postgres.VerifyRepo, emailSvc mailer.Service, usersRepo postgres.UsersRepo) *AccessHandler {
+	return &AccessHandler{Verify: verify, EmailSvc: emailSvc, UsersRepo: usersRepo}
 }
 
 func (h *AccessHandler) Routes() chi.Router {
@@ -56,6 +57,13 @@ func (h *AccessHandler) request(w http.ResponseWriter, r *http.Request) {
 
 	if !utils.IsValidEmail(in.Email) {
 		response.WriteError(w, http.StatusBadRequest, "Invalid email format", response.CodeInvalidInput)
+		return
+	}
+
+	// Check if this email belongs to a registered user
+	if user, err := h.UsersRepo.FindByEmail(r.Context(), in.Email); err == nil && user != nil {
+		// Email belongs to a registered user - they should login instead
+		response.WriteError(w, http.StatusForbidden, "This email is associated with a registered account. Please login with your password instead.", response.CodeForbidden)
 		return
 	}
 
@@ -120,6 +128,13 @@ func (h *AccessHandler) verify(w http.ResponseWriter, r *http.Request) {
 	// Validate code format (should be 6 digits)
 	if len(in.Code) != 6 {
 		response.WriteError(w, http.StatusBadRequest, "Code must be 6 digits", response.CodeInvalidInput)
+		return
+	}
+
+	// Check if this email belongs to a registered user
+	if user, err := h.UsersRepo.FindByEmail(r.Context(), in.Email); err == nil && user != nil {
+		// Email belongs to a registered user - they should login instead
+		response.WriteError(w, http.StatusForbidden, "This email is associated with a registered account. Please login with your password instead.", response.CodeForbidden)
 		return
 	}
 

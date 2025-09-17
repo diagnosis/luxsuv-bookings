@@ -256,6 +256,50 @@ func (m *mockIdempotencyRepo) CleanupExpired(context.Context) (int64, error) {
 	return 0, nil
 }
 
+// Mock Users Repository
+type mockUsersRepo struct {
+	users map[string]*postgres.User // email -> user
+}
+
+func newMockUsersRepo() *mockUsersRepo {
+	return &mockUsersRepo{
+		users: make(map[string]*postgres.User),
+	}
+}
+
+func (m *mockUsersRepo) Create(ctx context.Context, email, hash, name, phone string) (*postgres.User, error) {
+	user := &postgres.User{
+		ID: int64(len(m.users) + 1),
+		Email: email,
+		PasswordHash: hash,
+		Name: name,
+		Phone: phone,
+		Role: "rider",
+	}
+	m.users[email] = user
+	return user, nil
+}
+
+func (m *mockUsersRepo) FindByEmail(ctx context.Context, email string) (*postgres.User, error) {
+	if user, exists := m.users[email]; exists {
+		return user, nil
+	}
+	return nil, fmt.Errorf("user not found")
+}
+
+func (m *mockUsersRepo) FindByID(ctx context.Context, id int64) (*postgres.User, error) {
+	for _, user := range m.users {
+		if user.ID == id {
+			return user, nil
+		}
+	}
+	return nil, fmt.Errorf("user not found")
+}
+
+func (m *mockUsersRepo) LinkExistingBookings(ctx context.Context, userID int64, email string) error {
+	return nil
+}
+
 // ---------- Test Setup ----------
 
 func setupTestServer() (*httptest.Server, *mockBookingRepo, *mockVerifyRepo, *mockMailer, *mockIdempotencyRepo) {
@@ -263,9 +307,10 @@ func setupTestServer() (*httptest.Server, *mockBookingRepo, *mockVerifyRepo, *mo
 	verifyRepo := newMockVerifyRepo()
 	mailer := &mockMailer{}
 	idempotencyRepo := newMockIdempotencyRepo()
+	usersRepo := newMockUsersRepo()
 	
-	accessHandler := guest.NewAccessHandler(verifyRepo, mailer)
-	bookingsHandler := guest.NewBookingsHandler(bookingRepo, idempotencyRepo)
+	accessHandler := guest.NewAccessHandler(verifyRepo, mailer, usersRepo)
+	bookingsHandler := guest.NewBookingsHandler(bookingRepo, idempotencyRepo, usersRepo)
 	
 	r := chi.NewRouter()
 	r.Mount("/v1/guest/access", accessHandler.Routes())

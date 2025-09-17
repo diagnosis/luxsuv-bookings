@@ -60,8 +60,8 @@ func main() {
 	userRepo := postgres.NewUsersRepo(pool)
 	verifyRepo := postgres.NewVerifyRepo(pool)
 	//
-	guestBookings := guest.NewBookingsHandler(bookRepo, idempotencyRepo)
-	guestAccess := guest.NewAccessHandler(verifyRepo, emailSvc)
+	guestBookings := guest.NewBookingsHandler(bookRepo, idempotencyRepo, userRepo)
+	guestAccess := guest.NewAccessHandler(verifyRepo, emailSvc, userRepo)
 
 	// Rate limiting for guest access requests
 	accessRateLimit := mw.NewRateLimiter(pool, mw.RateLimitConfig{
