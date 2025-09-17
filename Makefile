@@ -8,7 +8,7 @@ help: ## Show this help message
 	@echo 'Usage: make [target]'
 	@echo ''
 	@echo 'Targets:'
-	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_.-]+:.*?## / {printf "  %-22s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_.-]+:.*?## / {printf "  %-22s %s\n", $$1, $$2}\' $(MAKEFILE_LIST)
 
 # ========= Dev =========
 dev: ## Start all services with docker-compose
@@ -55,7 +55,7 @@ migrate: ## Run database migrations (root + any services that exist)
 	@echo "Running migrations..."
 	@if [ -d "./migrations" ]; then \
 		echo "Migrating root ./migrations ..."; \
-		goose -dir ./migrations postgres "$(DATABASE_URL)" up; \
+		goose -dir ./migrations postgres "$(DATABASE_URL)\" up; \
 	else \
 		echo "No root ./migrations found (skipping)"; \
 	fi
@@ -83,16 +83,16 @@ migrate-down: ## Rollback database migrations (root + any services that exist)
 
 migrate-%: ## Run migrations for a single service, e.g. `make migrate-bookings`
 	@if [ -d "services/$*/migrations" ]; then \
-		echo "Migrating services/$* ..."; \
-		( cd "services/$*" && goose -dir ./migrations postgres "$(DATABASE_URL)" up ); \
+		echo \"Migrating services/$* ..."; \
+		( cd \"services/$*" && goose -dir ./migrations postgres \"$(DATABASE_URL)" up ); \
 	else \
-		echo "services/$*/migrations not found (skipping)"; \
+		echo \"services/$*/migrations not found (skipping)"; \
 	fi
 
 migrate-down-%: ## Rollback migrations for a single service, e.g. `make migrate-down-bookings`
 	@if [ -d "services/$*/migrations" ]; then \
 		echo "Rolling back services/$* ..."; \
-		( cd "services/$*" && goose -dir ./migrations postgres "$(DATABASE_URL)" down ); \
+		( cd "services/$*" && goose -dir ./migrations postgres "$(DATABASE_URL)\" down ); \
 	else \
 		echo "services/$*/migrations not found (skipping)"; \
 	fi
