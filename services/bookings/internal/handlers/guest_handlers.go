@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"github.com/diagnosis/luxsuv-bookings/services/bookings/internal/domain"
 	"github.com/go-chi/chi/v5"
@@ -54,7 +53,7 @@ func (h *Handlers) ListGuestBookings(w http.ResponseWriter, r *http.Request) {
 	}
 
 	limit, offset := parsePagination(r)
-	
+
 	// Parse status filter
 	var statusPtr *domain.BookingStatus
 	if raw := r.URL.Query().Get("status"); raw != "" {

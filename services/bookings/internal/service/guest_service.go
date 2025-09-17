@@ -3,12 +3,10 @@ package service
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/diagnosis/luxsuv-bookings/pkg/auth"
 	"github.com/diagnosis/luxsuv-bookings/pkg/config"
 	"github.com/diagnosis/luxsuv-bookings/pkg/events"
-	"github.com/diagnosis/luxsuv-bookings/pkg/logger"
 	"github.com/diagnosis/luxsuv-bookings/services/bookings/internal/repository"
 )
 

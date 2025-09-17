@@ -11,7 +11,6 @@ import (
 	"github.com/diagnosis/luxsuv-bookings/pkg/config"
 	"github.com/diagnosis/luxsuv-bookings/pkg/logger"
 	"github.com/diagnosis/luxsuv-bookings/services/bookings/internal/service"
-	"github.com/go-chi/chi/v5"
 )
 
 type Handlers struct {
@@ -37,19 +36,19 @@ func (h *Handlers) RequireJWT(requiredRole string) func(http.Handler) http.Handl
 				http.Error(w, "Missing or invalid authorization header", http.StatusUnauthorized)
 				return
 			}
-			
+
 			token := strings.TrimPrefix(authHeader, "Bearer ")
 			claims, err := auth.Parse(token, h.config.Auth.JWTSecret)
 			if err != nil {
 				http.Error(w, "Invalid token", http.StatusUnauthorized)
 				return
 			}
-			
+
 			if requiredRole != "" && claims.Role != requiredRole && claims.Role != "admin" {
 				http.Error(w, "Insufficient permissions", http.StatusForbidden)
 				return
 			}
-			
+
 			// Add user context
 			ctx := context.WithValue(r.Context(), logger.UserIDKey, claims.Sub)
 			ctx = context.WithValue(ctx, "claims", claims)
@@ -67,18 +66,18 @@ func (h *Handlers) RequireGuestSession(next http.Handler) http.Handler {
 		} else {
 			token = r.URL.Query().Get("session_token")
 		}
-		
+
 		if token == "" {
 			http.Error(w, "Guest session required", http.StatusUnauthorized)
 			return
 		}
-		
+
 		claims, err := auth.Parse(token, h.config.Auth.JWTSecret)
 		if err != nil || claims.Role != "guest" {
 			http.Error(w, "Invalid guest session", http.StatusUnauthorized)
 			return
 		}
-		
+
 		ctx := context.WithValue(r.Context(), "guest_claims", claims)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
@@ -93,7 +92,7 @@ func (h *Handlers) OptionalGuestSession(next http.Handler) http.Handler {
 		} else {
 			token = r.URL.Query().Get("session_token")
 		}
-		
+
 		if token != "" {
 			if claims, err := auth.Parse(token, h.config.Auth.JWTSecret); err == nil && claims.Role == "guest" {
 				ctx := context.WithValue(r.Context(), "guest_claims", claims)
@@ -135,7 +134,7 @@ func writeError(w http.ResponseWriter, statusCode int, message string) {
 func parsePagination(r *http.Request) (limit, offset int) {
 	limit = 20
 	offset = 0
-	
+
 	if v := r.URL.Query().Get("limit"); v != "" {
 		if n, err := strconv.Atoi(v); err == nil && n > 0 && n <= 100 {
 			limit = n
@@ -146,6 +145,6 @@ func parsePagination(r *http.Request) (limit, offset int) {
 			offset = n
 		}
 	}
-	
+
 	return limit, offset
 }

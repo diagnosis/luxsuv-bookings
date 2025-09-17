@@ -12,10 +12,9 @@ import (
 	"github.com/diagnosis/luxsuv-bookings/pkg/auth"
 	"github.com/diagnosis/luxsuv-bookings/pkg/config"
 	"github.com/diagnosis/luxsuv-bookings/pkg/logger"
-	"github.com/diagnosis/luxsuv-bookings/services/auth/internal/domain"
+
 	"github.com/diagnosis/luxsuv-bookings/services/auth/internal/repository"
 	"github.com/diagnosis/luxsuv-bookings/services/auth/internal/service"
-	"github.com/go-chi/chi/v5"
 )
 
 type Handlers struct {
@@ -48,19 +47,19 @@ func (h *Handlers) RequireJWT(requiredRole string) func(http.Handler) http.Handl
 				writeError(w, http.StatusUnauthorized, "Missing or invalid authorization header", "UNAUTHORIZED")
 				return
 			}
-			
+
 			token := strings.TrimPrefix(authHeader, "Bearer ")
 			claims, err := auth.Parse(token, h.config.Auth.JWTSecret)
 			if err != nil {
 				writeError(w, http.StatusUnauthorized, "Invalid token", "INVALID_TOKEN")
 				return
 			}
-			
+
 			if requiredRole != "" && claims.Role != requiredRole && claims.Role != "admin" {
 				writeError(w, http.StatusForbidden, "Insufficient permissions", "FORBIDDEN")
 				return
 			}
-			
+
 			// Add user context
 			ctx := context.WithValue(r.Context(), logger.UserIDKey, claims.Sub)
 			ctx = context.WithValue(ctx, "claims", claims)
@@ -75,7 +74,7 @@ func (h *Handlers) GuestAccessRateLimit() func(http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			clientIP := getClientIP(r)
 			key := "guest_access:" + clientIP
-			
+
 			allowed, err := h.rateLimitRepo.CheckRateLimit(r.Context(), key, 5, time.Minute)
 			if err != nil {
 				logger.ErrorContext(r.Context(), "Rate limit check failed", "error", err)
@@ -84,7 +83,7 @@ func (h *Handlers) GuestAccessRateLimit() func(http.Handler) http.Handler {
 				writeError(w, http.StatusTooManyRequests, "Too many requests. Please try again later.", "RATE_LIMIT_EXCEEDED")
 				return
 			}
-			
+
 			next.ServeHTTP(w, r)
 		})
 	}
@@ -106,12 +105,12 @@ func getClientIP(r *http.Request) string {
 		}
 		return strings.TrimSpace(xff)
 	}
-	
+
 	// Check X-Real-IP header
 	if xri := r.Header.Get("X-Real-IP"); xri != "" {
 		return strings.TrimSpace(xri)
 	}
-	
+
 	// Fall back to RemoteAddr
 	if host, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
 		return host
@@ -136,7 +135,7 @@ func writeError(w http.ResponseWriter, statusCode int, message, code string) {
 func parsePagination(r *http.Request) (limit, offset int) {
 	limit = 20
 	offset = 0
-	
+
 	if v := r.URL.Query().Get("limit"); v != "" {
 		if n, err := strconv.Atoi(v); err == nil && n > 0 && n <= 100 {
 			limit = n
@@ -147,6 +146,6 @@ func parsePagination(r *http.Request) (limit, offset int) {
 			offset = n
 		}
 	}
-	
+
 	return limit, offset
 }

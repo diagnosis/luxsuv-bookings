@@ -1,6 +1,9 @@
 package domain
 
-import "time"
+import (
+	"strings"
+	"time"
+)
 
 type BookingStatus string
 
@@ -30,24 +33,24 @@ const (
 )
 
 type Booking struct {
-	ID             int64         `json:"id"`
-	ManageToken    string        `json:"manage_token"`
-	Status         BookingStatus `json:"status"`
-	RiderName      string        `json:"rider_name"`
-	RiderEmail     string        `json:"rider_email"`
-	RiderPhone     string        `json:"rider_phone"`
-	Pickup         string        `json:"pickup"`
-	Dropoff        string        `json:"dropoff"`
-	ScheduledAt    time.Time     `json:"scheduled_at"`
-	Notes          string        `json:"notes"`
-	Passengers     int           `json:"passengers"`
-	Luggages       int           `json:"luggages"`
-	RideType       RideType      `json:"ride_type"`
-	UserID         *int64        `json:"user_id,omitempty"`
-	DriverID       *int64        `json:"driver_id,omitempty"`
-	RescheduleCount int          `json:"reschedule_count"`
-	CreatedAt      time.Time     `json:"created_at"`
-	UpdatedAt      time.Time     `json:"updated_at"`
+	ID              int64         `json:"id"`
+	ManageToken     string        `json:"manage_token"`
+	Status          BookingStatus `json:"status"`
+	RiderName       string        `json:"rider_name"`
+	RiderEmail      string        `json:"rider_email"`
+	RiderPhone      string        `json:"rider_phone"`
+	Pickup          string        `json:"pickup"`
+	Dropoff         string        `json:"dropoff"`
+	ScheduledAt     time.Time     `json:"scheduled_at"`
+	Notes           string        `json:"notes"`
+	Passengers      int           `json:"passengers"`
+	Luggages        int           `json:"luggages"`
+	RideType        RideType      `json:"ride_type"`
+	UserID          *int64        `json:"user_id,omitempty"`
+	DriverID        *int64        `json:"driver_id,omitempty"`
+	RescheduleCount int           `json:"reschedule_count"`
+	CreatedAt       time.Time     `json:"created_at"`
+	UpdatedAt       time.Time     `json:"updated_at"`
 }
 
 type BookingGuestReq struct {
@@ -71,23 +74,23 @@ type BookingGuestRes struct {
 }
 
 type BookingDTO struct {
-	ID             int64     `json:"id"`
-	Status         string    `json:"status"`
-	RiderName      string    `json:"rider_name"`
-	RiderEmail     string    `json:"rider_email"`
-	RiderPhone     string    `json:"rider_phone"`
-	Pickup         string    `json:"pickup"`
-	Dropoff        string    `json:"dropoff"`
-	ScheduledAt    time.Time `json:"scheduled_at"`
-	Notes          string    `json:"notes"`
-	Passengers     int       `json:"passengers"`
-	Luggages       int       `json:"luggages"`
-	RideType       string    `json:"ride_type"`
-	DriverID       *int64    `json:"driver_id,omitempty"`
-	RescheduleCount int      `json:"reschedule_count"`
-	CreatedAt      time.Time `json:"created_at"`
-	UpdatedAt      time.Time `json:"updated_at"`
-	UserID         *int64    `json:"user_id,omitempty"`
+	ID              int64     `json:"id"`
+	Status          string    `json:"status"`
+	RiderName       string    `json:"rider_name"`
+	RiderEmail      string    `json:"rider_email"`
+	RiderPhone      string    `json:"rider_phone"`
+	Pickup          string    `json:"pickup"`
+	Dropoff         string    `json:"dropoff"`
+	ScheduledAt     time.Time `json:"scheduled_at"`
+	Notes           string    `json:"notes"`
+	Passengers      int       `json:"passengers"`
+	Luggages        int       `json:"luggages"`
+	RideType        string    `json:"ride_type"`
+	DriverID        *int64    `json:"driver_id,omitempty"`
+	RescheduleCount int       `json:"reschedule_count"`
+	CreatedAt       time.Time `json:"created_at"`
+	UpdatedAt       time.Time `json:"updated_at"`
+	UserID          *int64    `json:"user_id,omitempty"`
 }
 
 type GuestPatch struct {
@@ -114,9 +117,9 @@ const (
 
 // CanReschedule checks if booking can be rescheduled
 func (b *Booking) CanReschedule() bool {
-	return b.RescheduleCount < MaxRescheduleCount && 
-		   b.Status != BookingCanceled && 
-		   b.Status != BookingCompleted
+	return b.RescheduleCount < MaxRescheduleCount &&
+		b.Status != BookingCanceled &&
+		b.Status != BookingCompleted
 }
 
 // CanCancel checks if booking can be canceled based on 24h rule
@@ -124,7 +127,7 @@ func (b *Booking) CanCancel() bool {
 	if b.Status == BookingCanceled || b.Status == BookingCompleted {
 		return false
 	}
-	
+
 	cutoffTime := b.ScheduledAt.Add(-CancelCutoffHours * time.Hour)
 	return time.Now().Before(cutoffTime)
 }
