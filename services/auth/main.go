@@ -15,6 +15,7 @@ import (
 	"github.com/diagnosis/luxsuv-bookings/pkg/logger"
 	mw "github.com/diagnosis/luxsuv-bookings/pkg/middleware"
 	"github.com/diagnosis/luxsuv-bookings/services/auth/internal/handlers"
+	"github.com/diagnosis/luxsuv-bookings/services/auth/internal/mailer"
 	"github.com/diagnosis/luxsuv-bookings/services/auth/internal/repository"
 	"github.com/diagnosis/luxsuv-bookings/services/auth/internal/service"
 )
@@ -38,16 +39,42 @@ func main() {
 		os.Exit(1)
 	}
 	defer eventBus.Close()
+
+	// Initialize mailer
+	var emailSvc mailer.Service
+	if cfg.Email.SMTPHost != "" {
+		emailSvc = mailer.NewSMTPMailer(
+			cfg.Email.SMTPHost,
+			cfg.Email.SMTPPort,
+			cfg.Email.SMTPFrom,
+			cfg.Email.SMTPUser,
+			cfg.Email.SMTPPass,
+			cfg.Email.SMTPUseTLS,
+		)
+		logger.Info("Mailer initialized", "type", "SMTP", "host", cfg.Email.SMTPHost)
+	} else if cfg.Email.MailerSendKey != "" {
+		emailSvc = mailer.NewMailerSend(
+			cfg.Email.MailerSendKey,
+			"LuxSUV Support",
+			cfg.Email.SMTPFrom,
+		)
+		logger.Info("Mailer initialized", "type", "MailerSend")
+	} else {
+		emailSvc = mailer.NewDevMailer()
+		logger.Info("Mailer initialized", "type", "Development")
+	}
 	
 	// Initialize repositories
 	userRepo := repository.NewUserRepository(pool)
 	verifyRepo := repository.NewVerifyRepository(pool)
+	rateLimitRepo := repository.NewRateLimitRepository(pool)
 	
 	// Initialize services
-	authService := service.NewAuthService(userRepo, verifyRepo, eventBus, cfg)
+	authService := service.NewAuthService(userRepo, verifyRepo, emailSvc, eventBus, cfg)
+	guestService := service.NewGuestService(verifyRepo, userRepo, emailSvc, eventBus, cfg)
 	
 	// Initialize handlers
-	h := handlers.New(authService)
+	h := handlers.New(authService, guestService, rateLimitRepo, cfg)
 	
 	// Setup router
 	r := chi.NewRouter()
@@ -56,21 +83,26 @@ func main() {
 	r.Use(mw.RequestID)
 	r.Use(mw.ServiceName("auth"))
 	r.Use(mw.Logging)
+	r.Use(mw.CORS)
 	r.Use(mw.Health)
 	r.Use(mw.Metrics)
 	
 	// Routes
 	r.Route("/", func(r chi.Router) {
-		// Guest access
-		r.Post("/guest/access/request", h.GuestAccessRequest)
-		r.Post("/guest/access/verify", h.GuestAccessVerify)
-		r.Post("/guest/access/magic", h.GuestAccessMagic)
+		// Guest access routes (with rate limiting)
+		r.Route("/guest/access", func(r chi.Router) {
+			r.Use(h.GuestAccessRateLimit())
+			r.Post("/request", h.GuestAccessRequest)
+			r.Post("/verify", h.GuestAccessVerify)
+			r.Post("/magic", h.GuestAccessMagic)
+		})
 		
-		// User auth
+		// User authentication routes
 		r.Post("/register", h.Register)
 		r.Post("/login", h.Login)
 		r.Post("/verify-email", h.VerifyEmail)
 		r.Post("/resend-verification", h.ResendVerification)
+		r.Post("/refresh", h.RefreshToken)
 		
 		// Admin routes (require admin JWT)
 		r.Route("/admin", func(r chi.Router) {
@@ -79,8 +111,28 @@ func main() {
 			r.Get("/users/{id}", h.GetUser)
 			r.Patch("/users/{id}", h.UpdateUser)
 			r.Delete("/users/{id}", h.DeleteUser)
+			r.Post("/users/{id}/roles", h.UpdateUserRole)
 		})
 	})
+	
+	// Background cleanup task
+	go func() {
+		ticker := time.NewTicker(time.Hour)
+		defer ticker.Stop()
+		for range ticker.C {
+			if deleted, err := verifyRepo.DeleteExpiredTokens(context.Background()); err != nil {
+				logger.Error("Failed to cleanup expired verification tokens", "error", err)
+			} else if deleted > 0 {
+				logger.Info("Cleaned up expired verification tokens", "count", deleted)
+			}
+			
+			if deleted, err := rateLimitRepo.CleanupExpired(context.Background()); err != nil {
+				logger.Error("Failed to cleanup expired rate limits", "error", err)
+			} else if deleted > 0 {
+				logger.Info("Cleaned up expired rate limits", "count", deleted)
+			}
+		}
+	}()
 	
 	// Start server
 	srv := &http.Server{
