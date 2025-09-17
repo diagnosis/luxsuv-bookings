@@ -48,6 +48,10 @@ func (p *ServiceProxy) ProxyRequest(ctx context.Context, method, path string, bo
 		req.Header.Set("X-Request-ID", requestID.(string))
 	}
 	
+	// Add correlation headers for service mesh
+	req.Header.Set("X-Gateway-Forwarded", "true")
+	req.Header.Set("X-Gateway-Service", "luxsuv-gateway")
+	
 	logger.DebugContext(ctx, "Proxying request", 
 		"method", method, 
 		"url", url,

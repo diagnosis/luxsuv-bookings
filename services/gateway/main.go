@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
@@ -10,7 +9,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/cors"
 	"github.com/diagnosis/luxsuv-bookings/pkg/config"
 	"github.com/diagnosis/luxsuv-bookings/pkg/logger"
 	mw "github.com/diagnosis/luxsuv-bookings/pkg/middleware"
@@ -21,15 +20,23 @@ import (
 func main() {
 	cfg := config.Load()
 	
-	// Initialize service proxies
-	authProxy := proxy.NewServiceProxy("http://auth-svc:8081")
-	bookingsProxy := proxy.NewServiceProxy("http://bookings-svc:8082")
-	dispatchProxy := proxy.NewServiceProxy("http://dispatch-svc:8083")
-	driverProxy := proxy.NewServiceProxy("http://driver-svc:8084")
-	paymentsProxy := proxy.NewServiceProxy("http://payments-svc:8085")
+	// Initialize service proxies - use localhost for development, service names for production
+	var (
+		authBaseURL     = getServiceURL("AUTH_SERVICE_URL", "http://localhost:8081")
+		bookingsBaseURL = getServiceURL("BOOKINGS_SERVICE_URL", "http://localhost:8082")
+		dispatchBaseURL = getServiceURL("DISPATCH_SERVICE_URL", "http://localhost:8083")
+		driverBaseURL   = getServiceURL("DRIVER_SERVICE_URL", "http://localhost:8084")
+		paymentsBaseURL = getServiceURL("PAYMENTS_SERVICE_URL", "http://localhost:8085")
+	)
+	
+	authProxy := proxy.NewServiceProxy(authBaseURL)
+	bookingsProxy := proxy.NewServiceProxy(bookingsBaseURL)
+	dispatchProxy := proxy.NewServiceProxy(dispatchBaseURL)
+	driverProxy := proxy.NewServiceProxy(driverBaseURL)
+	paymentsProxy := proxy.NewServiceProxy(paymentsBaseURL)
 	
 	// Initialize handlers
-	h := handlers.New(authProxy, bookingsProxy, dispatchProxy, driverProxy, paymentsProxy)
+	h := handlers.New(authProxy, bookingsProxy, dispatchProxy, driverProxy, paymentsProxy, cfg)
 	
 	// Setup router
 	r := chi.NewRouter()
@@ -38,8 +45,28 @@ func main() {
 	r.Use(mw.RequestID)
 	r.Use(mw.ServiceName("gateway"))
 	r.Use(mw.Logging)
-	r.Use(middleware.Recoverer)
-	r.Use(mw.CORS)
+	r.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			defer func() {
+				if err := recover(); err != nil {
+					logger.ErrorContext(r.Context(), "Panic recovered", "error", err)
+					http.Error(w, "Internal server error", http.StatusInternalServerError)
+				}
+			}()
+			next.ServeHTTP(w, r)
+		})
+	})
+	
+	// CORS configuration
+	r.Use(cors.Handler(cors.Options{
+		AllowedOrigins:   []string{"http://localhost:5173", "http://localhost:3000", "*"},
+		AllowedMethods:   []string{"GET", "POST", "PATCH", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token", "Idempotency-Key"},
+		ExposedHeaders:   []string{"Link"},
+		AllowCredentials: true,
+		MaxAge:          300,
+	}))
+	
 	r.Use(mw.Health)
 	r.Use(mw.Metrics)
 	
@@ -47,11 +74,14 @@ func main() {
 	r.Route("/v1", func(r chi.Router) {
 		// Guest routes (no auth required for creation, session required for listing)
 		r.Route("/guest", func(r chi.Router) {
+			// Guest access routes (moved to auth service)
 			r.Route("/access", func(r chi.Router) {
 				r.Post("/request", h.GuestAccessRequest)
 				r.Post("/verify", h.GuestAccessVerify)
 				r.Post("/magic", h.GuestAccessMagic)
 			})
+			
+			// Guest booking routes (routed to bookings service)
 			r.Route("/bookings", func(r chi.Router) {
 				r.Post("/", h.CreateGuestBooking)
 				r.With(h.RequireGuestSession).Get("/", h.ListGuestBookings)
@@ -61,12 +91,25 @@ func main() {
 			})
 		})
 		
-		// Auth routes
+		// Auth routes (routed to auth service)
 		r.Route("/auth", func(r chi.Router) {
 			r.Post("/register", h.Register)
 			r.Post("/login", h.Login)
 			r.Post("/verify-email", h.VerifyEmail)
 			r.Post("/resend-verification", h.ResendVerification)
+			r.Post("/refresh", h.RefreshToken)
+		})
+		
+		// Admin user management routes
+		r.Route("/admin", func(r chi.Router) {
+			r.Use(h.RequireJWT("admin"))
+			r.Route("/users", func(r chi.Router) {
+				r.Get("/", h.ListUsers)
+				r.Get("/{id}", h.GetUser)
+				r.Patch("/{id}", h.UpdateUser)
+				r.Delete("/{id}", h.DeleteUser)
+				r.Post("/{id}/roles", h.UpdateUserRole)
+			})
 		})
 		
 		// Rider routes (JWT required)
@@ -102,25 +145,14 @@ func main() {
 			r.Get("/drivers", h.ListAvailableDrivers)
 		})
 		
-		// Admin routes (JWT required, admin role)
+		// Admin booking routes (JWT required, admin role)
 		r.Route("/admin", func(r chi.Router) {
 			r.Use(h.RequireJWT("admin"))
-			r.Route("/users", func(r chi.Router) {
-				r.Get("/", h.ListUsers)
-				r.Get("/{id}", h.GetUser)
-				r.Patch("/{id}", h.UpdateUser)
-				r.Delete("/{id}", h.DeleteUser)
-			})
 			r.Route("/bookings", func(r chi.Router) {
 				r.Get("/", h.ListAllBookings)
 				r.Get("/{id}", h.GetBooking)
 				r.Patch("/{id}", h.UpdateBooking)
 				r.Delete("/{id}", h.CancelBooking)
-			})
-			r.Route("/drivers", func(r chi.Router) {
-				r.Get("/", h.ListAllDrivers)
-				r.Post("/", h.CreateDriver)
-				r.Patch("/{id}", h.UpdateDriver)
 			})
 		})
 		
@@ -161,4 +193,11 @@ func main() {
 		logger.Error("Gateway server error", "error", err)
 		os.Exit(1)
 	}
+}
+
+func getServiceURL(envKey, fallback string) string {
+	if url := os.Getenv(envKey); url != "" {
+		return url
+	}
+	return fallback
 }

@@ -1,0 +1,129 @@
+### ───────────────────────────────────────────────────────────────────────────
+### LuxSUV Gateway API Tests
+### Test the microservices architecture through the gateway
+### ───────────────────────────────────────────────────────────────────────────
+
+@gateway = http://localhost:8080
+@email = test@example.com
+@phone = +15551234567
+
+### ───────────────────────────────────────────────────────────────────────────
+### 1. Register new user (via gateway -> auth service)
+### ───────────────────────────────────────────────────────────────────────────
+POST {{gateway}}/v1/auth/register
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "SecurePass123!",
+  "name": "Test User",
+  "phone": "{{phone}}"
+}
+
+### ───────────────────────────────────────────────────────────────────────────
+### 2. Guest access flow (via gateway -> auth service)
+### ───────────────────────────────────────────────────────────────────────────
+POST {{gateway}}/v1/guest/access/request
+Content-Type: application/json
+
+{
+  "email": "guest@example.com"
+}
+
+### ───────────────────────────────────────────────────────────────────────────
+### 3. Create guest booking (via gateway -> bookings service)
+### ───────────────────────────────────────────────────────────────────────────
+POST {{gateway}}/v1/guest/bookings
+Content-Type: application/json
+Idempotency-Key: test-booking-123
+
+{
+  "rider_name": "John Doe",
+  "rider_email": "john@example.com",
+  "rider_phone": "+1234567890",
+  "pickup": "SFO Terminal 1",
+  "dropoff": "Downtown Hotel",
+  "scheduled_at": "2025-12-01T15:30:00Z",
+  "notes": "2 large bags",
+  "passengers": 2,
+  "luggages": 2,
+  "ride_type": "per_ride"
+}
+
+> {%
+    const body = JSON.parse(response.body);
+    client.global.set("booking_id", String(body.id));
+    client.global.set("manage_token", body.manage_token);
+%}
+
+### ───────────────────────────────────────────────────────────────────────────
+### 4. Get booking with manage token (via gateway -> bookings service)
+### ───────────────────────────────────────────────────────────────────────────
+GET {{gateway}}/v1/guest/bookings/{{booking_id}}?manage_token={{manage_token}}
+
+### ───────────────────────────────────────────────────────────────────────────
+### 5. Update booking (via gateway -> bookings service)
+### ───────────────────────────────────────────────────────────────────────────
+PATCH {{gateway}}/v1/guest/bookings/{{booking_id}}?manage_token={{manage_token}}
+Content-Type: application/json
+
+{
+  "notes": "Updated notes via gateway",
+  "passengers": 3
+}
+
+### ───────────────────────────────────────────────────────────────────────────
+### 6. Health check (gateway)
+### ───────────────────────────────────────────────────────────────────────────
+GET {{gateway}}/healthz
+
+### ───────────────────────────────────────────────────────────────────────────
+### 7. Test service unavailable (should gracefully handle)
+### ───────────────────────────────────────────────────────────────────────────
+GET {{gateway}}/v1/dispatch/pending
+Authorization: Bearer invalid-token
+
+### ───────────────────────────────────────────────────────────────────────────
+### 8. Login user (via gateway -> auth service)
+### ───────────────────────────────────────────────────────────────────────────
+POST {{gateway}}/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "SecurePass123!"
+}
+
+> {%
+    const body = JSON.parse(response.body);
+    client.global.set("access_token", body.access_token);
+%}
+
+### ───────────────────────────────────────────────────────────────────────────
+### 9. Create rider booking (authenticated via gateway -> bookings service)
+### ───────────────────────────────────────────────────────────────────────────
+POST {{gateway}}/v1/rider/bookings
+Content-Type: application/json
+Authorization: Bearer {{access_token}}
+
+{
+  "pickup": "Home",
+  "dropoff": "Office",
+  "scheduled_at": "2025-12-02T09:00:00Z",
+  "notes": "Business trip",
+  "passengers": 1,
+  "luggages": 1,
+  "ride_type": "per_ride"
+}
+
+### ───────────────────────────────────────────────────────────────────────────
+### 10. List rider bookings (authenticated via gateway -> bookings service)
+### ───────────────────────────────────────────────────────────────────────────
+GET {{gateway}}/v1/rider/bookings?limit=10
+Authorization: Bearer {{access_token}}
+
+### ───────────────────────────────────────────────────────────────────────────
+### 11. Verify token validation through gateway
+### ───────────────────────────────────────────────────────────────────────────
+GET {{gateway}}/v1/rider/bookings
+Authorization: Bearer invalid-token-should-fail

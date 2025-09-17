@@ -212,3 +212,77 @@ func (h *Handlers) UpdateUserRole(w http.ResponseWriter, r *http.Request) {
 		"message": "User role updated successfully",
 	})
 }
+
+// Token validation endpoints for gateway
+func (h *Handlers) ValidateToken(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Token        string `json:"token"`
+		RequiredRole string `json:"required_role"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "Invalid JSON format", "INVALID_INPUT")
+		return
+	}
+	
+	if req.Token == "" {
+		writeError(w, http.StatusBadRequest, "Token is required", "INVALID_INPUT")
+		return
+	}
+	
+	claims, err := auth.Parse(req.Token, h.config.Auth.JWTSecret)
+	if err != nil {
+		writeError(w, http.StatusUnauthorized, "Invalid token", "INVALID_TOKEN")
+		return
+	}
+	
+	// Check role requirements
+	if req.RequiredRole != "" && claims.Role != req.RequiredRole && claims.Role != "admin" {
+		writeError(w, http.StatusForbidden, "Insufficient permissions", "FORBIDDEN")
+		return
+	}
+	
+	// Return user info for gateway context
+	response := map[string]interface{}{
+		"valid":   true,
+		"user_id": claims.Sub,
+		"email":   claims.Email,
+		"role":    claims.Role,
+		"scope":   claims.Scope,
+	}
+	
+	writeJSON(w, http.StatusOK, response)
+}
+
+func (h *Handlers) ValidateGuestToken(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Token string `json:"token"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "Invalid JSON format", "INVALID_INPUT")
+		return
+	}
+	
+	if req.Token == "" {
+		writeError(w, http.StatusBadRequest, "Token is required", "INVALID_INPUT")
+		return
+	}
+	
+	claims, err := auth.Parse(req.Token, h.config.Auth.JWTSecret)
+	if err != nil {
+		writeError(w, http.StatusUnauthorized, "Invalid token", "INVALID_TOKEN")
+		return
+	}
+	
+	if claims.Role != "guest" {
+		writeError(w, http.StatusUnauthorized, "Invalid guest token", "INVALID_TOKEN")
+		return
+	}
+	
+	// Return guest info for gateway context
+	response := map[string]interface{}{
+		"valid": true,
+		"email": claims.Email,
+	}
+	
+	writeJSON(w, http.StatusOK, response)
+}

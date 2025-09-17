@@ -14,11 +14,26 @@ dev: ## Start all services with docker-compose
 	@sleep 10
 	docker-compose up --build
 
+dev-gateway: ## Start only gateway (assumes services are running)
+	cd services/gateway && go run .
+
+dev-auth: ## Start only auth service
+	cd services/auth && go run .
+
+dev-bookings: ## Start only bookings service
+	cd services/bookings && go run .
+
 dev-down: ## Stop all services
 	docker-compose down
 
 dev-logs: ## Follow logs for all services
 	docker-compose logs -f
+
+dev-logs-gateway: ## Follow gateway logs
+	docker-compose logs -f gateway
+
+dev-logs-auth: ## Follow auth service logs
+	docker-compose logs -f auth-svc
 
 # Database
 migrate: ## Run database migrations

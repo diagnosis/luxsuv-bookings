@@ -104,6 +104,10 @@ func main() {
 		r.Post("/resend-verification", h.ResendVerification)
 		r.Post("/refresh", h.RefreshToken)
 		
+		// Token validation endpoints (for gateway)
+		r.Post("/validate-token", h.ValidateToken)
+		r.Post("/validate-guest-token", h.ValidateGuestToken)
+		
 		// Admin routes (require admin JWT)
 		r.Route("/admin", func(r chi.Router) {
 			r.Use(h.RequireJWT("admin"))

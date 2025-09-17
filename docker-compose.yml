@@ -72,6 +72,11 @@ services:
       REDIS_URL: redis://redis:6379
       NATS_URL: nats://nats:4222
       JWT_SECRET: dev-secret-change-in-production
+      AUTH_SERVICE_URL: http://auth-svc:8081
+      BOOKINGS_SERVICE_URL: http://bookings-svc:8082
+      DISPATCH_SERVICE_URL: http://dispatch-svc:8083
+      DRIVER_SERVICE_URL: http://driver-svc:8084
+      PAYMENTS_SERVICE_URL: http://payments-svc:8085
       LOG_LEVEL: debug
     depends_on:
       postgres:
@@ -108,12 +113,15 @@ services:
       SMTP_PORT: 1025
       SMTP_FROM: noreply@luxsuv.local
       EMAIL_DEV_MODE: true
+      FRONTEND_BASE_URL: http://localhost:5173
       LOG_LEVEL: debug
     depends_on:
       postgres:
         condition: service_healthy
       nats:
         condition: service_healthy
+      mailpit:
+        condition: service_started
 
   bookings-svc:
     build:
