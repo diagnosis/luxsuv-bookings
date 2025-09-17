@@ -1,13 +1,16 @@
-.PHONY: help dev dev-down migrate migrate-down seed test lint fmt clean build docker-build k8s-up k8s-down
+.PHONY: help dev dev-down dev-gateway dev-auth dev-bookings dev-logs dev-logs-gateway dev-logs-auth \
+	migrate migrate-down migrate-% migrate-down-% seed test test-integration lint fmt clean build \
+	docker-build k8s-up k8s-down k8s-logs db-shell redis-cli nats-cli
 
-# Default target
+SHELL := /bin/sh
+
 help: ## Show this help message
 	@echo 'Usage: make [target]'
 	@echo ''
 	@echo 'Targets:'
-	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  %-15s %s\n", $$1, $$2}\' $(MAKEFILE_LIST)
+	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_.-]+:.*?## / {printf "  %-22s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
-# Development
+# ========= Dev =========
 dev: ## Start all services with docker-compose
 	docker-compose up -d postgres redis nats mailpit
 	@echo "Waiting for services to be ready..."
@@ -15,13 +18,13 @@ dev: ## Start all services with docker-compose
 	docker-compose up --build
 
 dev-gateway: ## Start only gateway (assumes services are running)
-	cd services/gateway && go run .
+	@( cd services/gateway 2>/dev/null && go run . ) || { echo "gateway not found"; exit 0; }
 
 dev-auth: ## Start only auth service
-	cd services/auth && go run .
+	@( cd services/auth 2>/dev/null && go run . ) || { echo "auth not found"; exit 0; }
 
 dev-bookings: ## Start only bookings service
-	cd services/bookings && go run .
+	@( cd services/bookings 2>/dev/null && go run . ) || { echo "bookings not found"; exit 0; }
 
 dev-down: ## Stop all services
 	docker-compose down
@@ -35,26 +38,58 @@ dev-logs-gateway: ## Follow gateway logs
 dev-logs-auth: ## Follow auth service logs
 	docker-compose logs -f auth-svc
 
-# Database
-migrate: ## Run database migrations
+# ======== DB (Goose) ========
+migrate: ## Run database migrations (root + any services that exist)
 	@echo "Running migrations..."
-	@for service in auth bookings dispatch driver payments; do \
-		echo "Migrating $$service..."; \
-		cd services/$$service && goose postgres "$(DATABASE_URL)\" up && cd ../..; \
+	@if [ -d "./migrations" ]; then \
+		echo "Migrating root ./migrations ..."; \
+		goose -dir ./migrations postgres "$(DATABASE_URL)" up; \
+	else \
+		echo "No root ./migrations found (skipping)"; \
+	fi
+	@for dir in services/*; do \
+		if [ -d "$$dir/migrations" ]; then \
+			echo "Migrating $$dir ..."; \
+			( cd "$$dir" && goose -dir ./migrations postgres "$(DATABASE_URL)" up ); \
+		fi; \
 	done
 
-migrate-down: ## Rollback database migrations
+migrate-down: ## Rollback database migrations (root + any services that exist)
 	@echo "Rolling back migrations..."
-	@for service in auth bookings dispatch driver payments; do \
-		echo "Rolling back $$service..."; \
-		cd services/$$service && goose postgres "$(DATABASE_URL)\" down && cd ../..; \
+	@if [ -d "./migrations" ]; then \
+		echo "Rolling back root ./migrations ..."; \
+		goose -dir ./migrations postgres "$(DATABASE_URL)" down; \
+	else \
+		echo "No root ./migrations found (skipping)"; \
+	fi
+	@for dir in services/*; do \
+		if [ -d "$$dir/migrations" ]; then \
+			echo "Rolling back $$dir ..."; \
+			( cd "$$dir" && goose -dir ./migrations postgres "$(DATABASE_URL)" down ); \
+		fi; \
 	done
+
+migrate-%: ## Run migrations for a single service, e.g. `make migrate-bookings`
+	@if [ -d "services/$*/migrations" ]; then \
+		echo "Migrating services/$* ..."; \
+		( cd "services/$*" && goose -dir ./migrations postgres "$(DATABASE_URL)" up ); \
+	else \
+		echo "services/$*/migrations not found (skipping)"; \
+	fi
+
+migrate-down-%: ## Rollback migrations for a single service, e.g. `make migrate-down-bookings`
+	@if [ -d "services/$*/migrations" ]; then \
+		echo "Rolling back services/$* ..."; \
+		( cd "services/$*" && goose -dir ./migrations postgres "$(DATABASE_URL)" down ); \
+	else \
+		echo "services/$*/migrations not found (skipping)"; \
+	fi
 
 seed: ## Seed database with test data
 	@echo "Seeding database..."
 	@go run scripts/seed/main.go
 
-# Testing
+# ======== Tests / Quality ========
 test: ## Run all tests
 	@echo "Running tests..."
 	@go test -v ./...
@@ -63,7 +98,6 @@ test-integration: ## Run integration tests
 	@echo "Running integration tests..."
 	@go test -v -tags=integration ./...
 
-# Code quality
 lint: ## Run linter
 	@echo "Running linter..."
 	@golangci-lint run ./...
@@ -73,7 +107,7 @@ fmt: ## Format code
 	@go fmt ./...
 	@goimports -w .
 
-# Build
+# ========= Build =========
 clean: ## Clean build artifacts
 	@echo "Cleaning..."
 	@rm -rf bin/
@@ -83,37 +117,43 @@ build: ## Build all services
 	@echo "Building services..."
 	@mkdir -p bin
 	@for service in gateway auth bookings dispatch driver payments notify; do \
-		echo "Building $$service..."; \
-		cd services/$$service && go build -o ../../bin/$$service . && cd ../..; \
+		if [ -d "services/$$service" ]; then \
+			echo "Building $$service..."; \
+			( cd services/$$service && go build -o ../../bin/$$service . ); \
+		fi; \
 	done
 
 docker-build: ## Build Docker images
 	@echo "Building Docker images..."
 	@for service in gateway auth bookings dispatch driver payments notify; do \
-		echo "Building $$service image..."; \
-		docker build -f services/$$service/Dockerfile -t luxsuv/$$service:latest .; \
+		if [ -d "services/$$service" ]; then \
+			echo "Building $$service image..."; \
+			docker build -f services/$$service/Dockerfile -t luxsuv/$$service:latest .; \
+		fi; \
 	done
 
-# Kubernetes
+# ======== Kubernetes (kind + Helm) ========
 k8s-up: ## Deploy to local Kubernetes (kind)
 	@echo "Setting up local Kubernetes cluster..."
 	@kind create cluster --name luxsuv || true
 	@kubectl config use-context kind-luxsuv
 	@echo "Installing services..."
 	@for service in gateway auth bookings dispatch driver payments notify; do \
-		helm upgrade --install $$service deploy/helm/$$service \
-			--namespace luxsuv --create-namespace \
-			--set image.tag=latest; \
+		if [ -d "deploy/helm/$$service" ]; then \
+			helm upgrade --install $$service deploy/helm/$$service \
+				--namespace luxsuv --create-namespace \
+				--set image.tag=latest; \
+		fi; \
 	done
 
 k8s-down: ## Tear down local Kubernetes cluster
 	@echo "Tearing down Kubernetes cluster..."
 	@kind delete cluster --name luxsuv
 
-k8s-logs: ## Get logs from Kubernetes pods
+k8s-logs: ## Get logs from Kubernetes pods (gateway)
 	@kubectl logs -f -l app=gateway -n luxsuv
 
-# Utilities
+# ======== Utilities ========
 db-shell: ## Connect to database shell
 	@docker exec -it luxsuv_postgres psql -U postgres -d luxsuv
 
@@ -121,14 +161,13 @@ redis-cli: ## Connect to Redis CLI
 	@docker exec -it luxsuv_redis redis-cli
 
 nats-cli: ## Connect to NATS CLI (requires nats CLI tool)
-	@nats --server=nats://localhost:4222 stream ls
+	@nats --server=$(NATS_URL) stream ls
 
-# Environment variables
+# ======== Environment ========
 DATABASE_URL ?= postgres://postgres:postgres@localhost:5432/luxsuv?sslmode=disable
 REDIS_URL ?= redis://localhost:6379
-NATS_URL ?= nats://localhost:4222
+NATS_URL  ?= nats://localhost:4222
 
-# Export environment variables
 export DATABASE_URL
 export REDIS_URL
 export NATS_URL
