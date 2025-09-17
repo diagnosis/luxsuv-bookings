@@ -3,44 +3,35 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
+	"log"
+	"net"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
 	"github.com/alexedwards/argon2id"
+	"github.com/diagnosis/luxsuv-bookings/internal/http/response"
+	mw "github.com/diagnosis/luxsuv-bookings/internal/http/middleware"
 	"github.com/diagnosis/luxsuv-bookings/internal/platform/auth"
 	"github.com/diagnosis/luxsuv-bookings/internal/platform/mailer"
 	"github.com/diagnosis/luxsuv-bookings/internal/repo/postgres"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type AuthHandler struct {
 	Users    postgres.UsersRepo
 	Verify   postgres.VerifyRepo
 	EmailSvc mailer.Service
+	pool     *pgxpool.Pool
 }
 
-func NewAuthHandler(users postgres.UsersRepo, verify postgres.VerifyRepo, emailSvc mailer.Service) *AuthHandler {
-	return &AuthHandler{Users: users, Verify: verify, EmailSvc: emailSvc}
+func NewAuthHandler(users postgres.UsersRepo, verify postgres.VerifyRepo, emailSvc mailer.Service, pool *pgxpool.Pool) *AuthHandler {
+	return &AuthHandler{Users: users, Verify: verify, EmailSvc: emailSvc, pool: pool}
 }
 
-// Add rate limiting for auth endpoints
-func (h *AuthHandler) rateLimitedRoutes() chi.Router {
-	// Create rate limiter for auth endpoints
-	authRateLimit := mw.NewRateLimiter(h.pool, mw.RateLimitConfig{
-		Requests: 10,              // 10 requests per window
-		Window:   time.Minute,     // 1 minute window  
-		KeyFunc: func(r *http.Request) []string {
-			ip := mw.GetClientIP(r)
-			return []string{"auth:" + ip}
-		},
-	})
-	
-	r := chi.NewRouter()
-	r.Use(authRateLimit.Middleware())
-	return r
-}
 
 func (h *AuthHandler) Routes() chi.Router {
 	r := chi.NewRouter()
@@ -50,7 +41,7 @@ func (h *AuthHandler) Routes() chi.Router {
 	// Add rate limiting to verification endpoint
 	r.Group(func(rr chi.Router) {
 		// Rate limit verification attempts
-		verifyRateLimit := mw.NewRateLimiter(pool, mw.RateLimitConfig{
+		verifyRateLimit := mw.NewRateLimiter(h.pool, mw.RateLimitConfig{
 			Requests: 5,                    // 5 verification attempts per window
 			Window:   5 * time.Minute,      // 5 minute window
 			KeyFunc: func(r *http.Request) []string {
@@ -58,7 +49,7 @@ func (h *AuthHandler) Routes() chi.Router {
 				if token != "" {
 					return []string{"verify:" + token}
 				}
-				ip := mw.GetClientIP(r)
+				ip := getClientIP(r)
 				return []string{"verify:" + ip}
 			},
 		})
@@ -145,6 +136,29 @@ func (h *AuthHandler) register(w http.ResponseWriter, r *http.Request) {
 	}
 	
 	_ = json.NewEncoder(w).Encode(response)
+}
+
+// getClientIP extracts the real client IP from the request
+func getClientIP(r *http.Request) string {
+	// Check X-Forwarded-For header first
+	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+		// Take the first IP if there are multiple
+		if idx := strings.Index(xff, ","); idx != -1 {
+			return strings.TrimSpace(xff[:idx])
+		}
+		return strings.TrimSpace(xff)
+	}
+	
+	// Check X-Real-IP header
+	if xri := r.Header.Get("X-Real-IP"); xri != "" {
+		return strings.TrimSpace(xri)
+	}
+	
+	// Fall back to RemoteAddr
+	if host, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
+		return host
+	}
+	return r.RemoteAddr
 }
 
 func (h *AuthHandler) verifyEmail(w http.ResponseWriter, r *http.Request) {

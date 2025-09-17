@@ -70,7 +70,7 @@ func main() {
 		KeyFunc:  mw.GuestAccessRateLimitKeyFunc,
 	})
 
-	authH := handlers.NewAuthHandler(userRepo, verifyRepo, emailSvc)
+	authH := handlers.NewAuthHandler(userRepo, verifyRepo, emailSvc, pool)
 	riderH := handlers.NewRiderBookingsHandler(bookRepo, userRepo)
 
 	//router
