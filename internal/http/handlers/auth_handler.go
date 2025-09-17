@@ -198,6 +198,73 @@ func (h *AuthHandler) verifyEmail(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(responseData)
 }
 
+func (h *AuthHandler) resendVerification(w http.ResponseWriter, r *http.Request) {
+	var in struct {
+		Email string `json:"email"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&in); err != nil || in.Email == "" {
+		response.BadRequest(w, "Email is required")
+		return
+	}
+
+	email := strings.ToLower(strings.TrimSpace(in.Email))
+	
+	// Find user by email
+	u, err := h.Users.FindByEmail(r.Context(), email)
+	if err != nil {
+		// Don't reveal if user exists or not
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]string{
+			"message": "If an unverified account exists with this email, a verification link has been sent",
+		})
+		return
+	}
+
+	// Check if already verified
+	verified, err := h.Verify.IsUserVerified(r.Context(), u.ID)
+	if err != nil {
+		response.InternalError(w, "Failed to check verification status")
+		return
+	}
+	if verified {
+		response.WriteError(w, http.StatusBadRequest, "Account is already verified", response.CodeInvalidInput)
+		return
+	}
+
+	// Create new verification token
+	vtok := uuid.NewString()
+	if err := h.Verify.CreateEmailVerification(r.Context(), u.ID, vtok, time.Now().Add(2*time.Hour)); err != nil {
+		log.Printf("failed to create email verification token: %v", err)
+		response.InternalError(w, "Failed to create verification token")
+		return
+	}
+
+	// Send verification email
+	baseURL := os.Getenv("FRONTEND_BASE_URL")
+	if baseURL == "" {
+		baseURL = "http://localhost:5173"
+	}
+	verifyURL := baseURL + "/verify-email?token=" + vtok
+
+	_, err = h.EmailSvc.Send(
+		u.Email, u.Name,
+		"Verify your LuxSuv account",
+		"Click to verify: "+verifyURL,
+		fmt.Sprintf(`<p>Hi %s,</p><p>Please <a href="%s">verify your email</a>. Link expires in 2 hours.</p>`, u.Name, verifyURL),
+	)
+	
+	if err != nil {
+		log.Printf("failed to send verification email: %v", err)
+		response.InternalError(w, "Failed to send verification email")
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]string{
+		"message": "Verification email sent",
+	})
+}
+
 func (h *AuthHandler) login(w http.ResponseWriter, r *http.Request) {
 	var in struct {
 		Email    string `json:"email"`
