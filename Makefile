@@ -17,14 +17,26 @@ dev: ## Start all services with docker-compose
 	@sleep 10
 	docker-compose up --build
 
-dev-gateway: ## Start only gateway (assumes services are running)
-	@( cd services/gateway 2>/dev/null && go run . ) || { echo "gateway not found"; exit 0; }
+dev-local: ## Start services locally (not in containers)
+	@echo "Starting services locally..."
+	@echo "Make sure PostgreSQL, Redis, NATS are running first"
+	@echo "Starting Auth Service on :8081..."
+	@( cd services/auth && go run . & )
+	@sleep 2
+	@echo "Starting Bookings Service on :8082..."
+	@( cd services/bookings && go run . & )
+	@sleep 2
+	@echo "Starting Gateway on :8080..."
+	@( cd services/gateway && go run . )
 
-dev-auth: ## Start only auth service
-	@( cd services/auth 2>/dev/null && go run . ) || { echo "auth not found"; exit 0; }
+dev-auth: ## Start only auth service locally
+	@( cd services/auth && go run . )
 
-dev-bookings: ## Start only bookings service
-	@( cd services/bookings 2>/dev/null && go run . ) || { echo "bookings not found"; exit 0; }
+dev-bookings: ## Start only bookings service locally
+	@( cd services/bookings && go run . )
+
+dev-gateway: ## Start only gateway service locally
+	@( cd services/gateway && go run . )
 
 dev-down: ## Stop all services
 	docker-compose down
