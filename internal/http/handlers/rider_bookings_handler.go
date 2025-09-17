@@ -8,7 +8,6 @@ import (
 
 	"github.com/diagnosis/luxsuv-bookings/internal/domain"
 	mw "github.com/diagnosis/luxsuv-bookings/internal/http/middleware"
-	"github.com/diagnosis/luxsuv-bookings/internal/http/middleware/guest_middleware"
 	"github.com/diagnosis/luxsuv-bookings/internal/repo/postgres"
 	"github.com/go-chi/chi/v5"
 )
@@ -43,7 +42,7 @@ type riderCreateReq struct {
 }
 
 func (h *RiderBookingsHandler) create(w http.ResponseWriter, r *http.Request) {
-	claims := guest_middleware.Claims(r)
+	claims := mw.Claims(r)
 	if claims == nil || claims.Sub == 0 {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
@@ -111,7 +110,7 @@ func (h *RiderBookingsHandler) create(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *RiderBookingsHandler) list(w http.ResponseWriter, r *http.Request) {
-	claims := guest_middleware.Claims(r)
+	claims := mw.Claims(r)
 	if claims == nil || claims.Role != "rider" {
 		http.Error(w, "forbidden", http.StatusForbidden)
 		return
@@ -158,7 +157,7 @@ func (h *RiderBookingsHandler) list(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *RiderBookingsHandler) getByID(w http.ResponseWriter, r *http.Request) {
-	claims := guest_middleware.Claims(r)
+	claims := mw.Claims(r)
 	if claims == nil || claims.Role != "rider" {
 		http.Error(w, "forbidden", http.StatusForbidden)
 		return
@@ -190,7 +189,7 @@ func (h *RiderBookingsHandler) getByID(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *RiderBookingsHandler) cancel(w http.ResponseWriter, r *http.Request) {
-	claims := guest_middleware.Claims(r)
+	claims := mw.Claims(r)
 	if claims == nil || claims.Role != "rider" {
 		http.Error(w, "forbidden", http.StatusForbidden)
 		return
