@@ -5,7 +5,7 @@ help: ## Show this help message
 	@echo 'Usage: make [target]'
 	@echo ''
 	@echo 'Targets:'
-	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  %-15s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  %-15s %s\n", $$1, $$2}\' $(MAKEFILE_LIST)
 
 # Development
 dev: ## Start all services with docker-compose
@@ -25,14 +25,14 @@ migrate: ## Run database migrations
 	@echo "Running migrations..."
 	@for service in auth bookings dispatch driver payments; do \
 		echo "Migrating $$service..."; \
-		cd services/$$service && goose postgres "$(DATABASE_URL)" up && cd ../..; \
+		cd services/$$service && goose postgres "$(DATABASE_URL)\" up && cd ../..; \
 	done
 
 migrate-down: ## Rollback database migrations
 	@echo "Rolling back migrations..."
 	@for service in auth bookings dispatch driver payments; do \
 		echo "Rolling back $$service..."; \
-		cd services/$$service && goose postgres "$(DATABASE_URL)" down && cd ../..; \
+		cd services/$$service && goose postgres "$(DATABASE_URL)\" down && cd ../..; \
 	done
 
 seed: ## Seed database with test data
